@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Presentation Deck - FraudGuard AI{% endblock %}
+
+{% block content %}
+<div class="app-main-content" style="max-width: 1200px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF;">
+                FraudGuard AI &bull; Hackathon Pitch Deck
+            </h1>
+            <p style="font-size: 0.88rem; color: #94A3B8; margin-top: 2px;">
+                Use the navigation buttons or Arrow Keys (&larr; / &rarr;) to present the slides.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{{ url_for('download_ppt') }}" class="btn btn-green">
+                <i class="icon-download"></i> Download .PPTX File
+            </a>
+        </div>
+    </div>
+
+    <!-- Slide Deck Container (16:9 Aspect Ratio) -->
+    <div style="background: #071224; border: 2px solid #1E3A68; border-top: 4px solid #10B981; border-radius: 6px; padding: 2.5rem 3rem; min-height: 540px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);" id="slideContainer">
+        
+        <!-- Slide Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <span id="slideKicker" style="font-size: 0.8rem; font-weight: 700; color: #10B981; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 4px;">
+                    PROJECT OVERVIEW
+                </span>
+                <h2 id="slideTitle" style="font-size: 2rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
+                    FraudGuard AI
+                </h2>
+            </div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #34D399; background: #0E1E38; border: 1px solid #1E3A68; padding: 4px 10px; border-radius: 4px;">
+                Slide <span id="currentSlideNum">1</span> / 10
+            </div>
+        </div>
+
+        <!-- Slide Body (Dynamic Content) -->
+        <div id="slideBody" style="flex: 1; margin: 2rem 0;">
+            <!-- Populated via JavaScript -->
+        </div>
+
+        <!-- Slide Footer Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #162C54; padding-top: 1.25rem;">
+            <span style="font-size: 12px; color: #64748B;">FraudGuard AI &bull; 24-Hour Student Hackathon 2026</span>
+            
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="prevSlideBtn" class="btn btn-secondary btn-sm">
+                    &larr; Previous
+                </button>
+                <button id="nextSlideBtn" class="btn btn-green btn-sm">
+                    Next Slide &rarr;
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const slides = [
+    {
+        kicker: "AI-POWERED FINANCIAL SECURITY",
+        title: "FraudGuard AI — Detect. Analyze. Protect.",
+        body: `
+            <div style="margin-top: 1.5rem;">
+                <div style="font-size: 1.35rem; font-weight: 700; color: #38BDF8; margin-bottom: 1rem;">
+                    AI-Based Fraud &amp; Suspicious Transaction Surveillance
+                </div>
+                <p style="font-size: 1.1rem; color: #CBD5E1; line-height: 1.6; max-width: 800px; margin-bottom: 2rem;">
+                    A modern, full-stack financial security platform engineered to identify multi-vector transaction anomalies in real time, provide explainable forensic evidence, simulate automated customer phone calls, and freeze compromised accounts autonomously.
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #10B981; padding: 1rem; border-radius: 4px;">
+                        <strong style="color: #FFF;">Unsupervised ML</strong>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">Scikit-Learn Isolation Forest (120 Estimators)</div>
+                    </div>
+                    <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #38BDF8; padding: 1rem; border-radius: 4px;">
+                        <strong style="color: #FFF;">Explainable AI</strong>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">Numbered evidence factors (01, 02, 03) for compliance</div>
+                    </div>
+                    <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #DC2626; padding: 1rem; border-radius: 4px;">
+                        <strong style="color: #FFF;">Customer Defense</strong>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">AI Voice call verification &amp; instant account freeze</div>
+                    </div>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "THE CHALLENGE",
+        title: "The Growing Crisis of Digital Transaction Fraud",
+        body: `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 1rem;">
+                <div style="background: #0E1E38; border: 1px solid #DC2626; padding: 1.5rem; border-radius: 4px;">
+                    <h3 style="color: #F87171; font-size: 1.1rem; margin-bottom: 0.75rem;">High-Velocity Bursts</h3>
+                    <p style="font-size: 13px; color: #CBD5E1; line-height: 1.5;">Fraudsters execute coordinated bursts within minutes across distributed accounts. Traditional static rules fail to catch fast cross-border takeovers.</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #F59E0B; padding: 1.5rem; border-radius: 4px;">
+                    <h3 style="color: #FCD34D; font-size: 1.1rem; margin-bottom: 0.75rem;">Opaque Black-Box ML</h3>
+                    <p style="font-size: 13px; color: #CBD5E1; line-height: 1.5;">Legacy AI models provide confidence numbers with zero justification. Analysts waste 40+ minutes per incident trying to decipher opaque alerts.</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #38BDF8; padding: 1.5rem; border-radius: 4px;">
+                    <h3 style="color: #38BDF8; font-size: 1.1rem; margin-bottom: 0.75rem;">Slow Verification</h3>
+                    <p style="font-size: 13px; color: #CBD5E1; line-height: 1.5;">Banks take hours or days to reach cardholders. Without immediate interactive call verification, accounts remain drained before intervention.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "OUR INNOVATION",
+        title: "FraudGuard AI: Multi-Layer Anomaly Defense System",
+        body: `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #10B981; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #10B981; margin-bottom: 0.4rem;">1. Hybrid Anomaly Scoring Engine</h4>
+                    <p style="font-size: 13px; color: #CBD5E1;">Combines deterministic behavioral heuristics (60%) with unsupervised ML (40%) across 5 dynamic vectors.</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #1D4ED8; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #60A5FA; margin-bottom: 0.4rem;">2. Isolation Forest Machine Learning</h4>
+                    <p style="font-size: 13px; color: #CBD5E1;">120 decision trees isolate outliers in 7-dimensional feature space without requiring pre-labeled training data.</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #38BDF8; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #38BDF8; margin-bottom: 0.4rem;">3. Explainable AI Forensic Factors</h4>
+                    <p style="font-size: 13px; color: #CBD5E1;">Numbered root-cause evidence cards (01, 02, 03) giving investigators immediate clarity for compliance audit trails.</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #DC2626; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #F87171; margin-bottom: 0.4rem;">4. Autonomous Customer Defense &amp; Auto-Block</h4>
+                    <p style="font-size: 13px; color: #CBD5E1;">Automated voice calls, SMS alerts, and instantaneous account freezing upon critical threat detection.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "PIPELINE WORKFLOW",
+        title: "End-to-End Transaction Surveillance Lifecycle",
+        body: `
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-top: 1rem;">
+                <div style="background: #0E1E38; border: 1px solid #10B981; padding: 1rem; border-radius: 4px;">
+                    <div style="color: #10B981; font-weight: 700; font-size: 13px;">01. INGEST</div>
+                    <p style="font-size: 11px; color: #CBD5E1; margin-top: 6px;">Metadata vector: Amount, Device, Geo-location, Timestamp, Velocity</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #1D4ED8; padding: 1rem; border-radius: 4px;">
+                    <div style="color: #60A5FA; font-weight: 700; font-size: 13px;">02. RULES</div>
+                    <p style="font-size: 11px; color: #CBD5E1; margin-top: 6px;">Evaluates multipliers (+25), new device (+20), location (+20), velocity (+20)</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #38BDF8; padding: 1rem; border-radius: 4px;">
+                    <div style="color: #38BDF8; font-weight: 700; font-size: 13px;">03. ML MODEL</div>
+                    <p style="font-size: 11px; color: #CBD5E1; margin-top: 6px;">Isolation Forest scores distance to normal distribution plane</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #F59E0B; padding: 1rem; border-radius: 4px;">
+                    <div style="color: #FCD34D; font-weight: 700; font-size: 13px;">04. HYBRID RISK</div>
+                    <p style="font-size: 11px; color: #CBD5E1; margin-top: 6px;">0.6 Rules + 0.4 ML &rarr; Final Score (Low, Med, High, Critical)</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #DC2626; padding: 1rem; border-radius: 4px;">
+                    <div style="color: #F87171; font-weight: 700; font-size: 13px;">05. AUTO-BLOCK</div>
+                    <p style="font-size: 11px; color: #CBD5E1; margin-top: 6px;">Voice call to customer + instant card freezing on critical fraud</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "TECHNICAL METHODOLOGY",
+        title: "Machine Learning & Dynamic Risk Scoring Formula",
+        body: `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                <div style="background: #0E1E38; border: 1px solid #162C54; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #10B981; margin-bottom: 0.5rem;">Behavioral Rule Penalties (Max: 100)</h4>
+                    <ul style="font-size: 12px; color: #CBD5E1; line-height: 1.6; margin-left: 1rem;">
+                        <li><strong>Amount Anomaly (+25):</strong> Amount &gt; 3x average or &gt; ₹50K</li>
+                        <li><strong>Hardware Device (+20):</strong> Unregistered browser fingerprint</li>
+                        <li><strong>Geographic Departure (+20):</strong> Foreign / out-of-zone IP</li>
+                        <li><strong>Off-Hours Timestamp (+15):</strong> 11 PM – 5:30 AM execution</li>
+                        <li><strong>Burst Velocity (+20):</strong> &ge; 5 transactions in 10 minutes</li>
+                    </ul>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #162C54; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #38BDF8; margin-bottom: 0.5rem;">Isolation Forest &amp; Risk Formulation</h4>
+                    <div class="mono" style="background: #050E1F; padding: 8px; border-radius: 4px; font-size: 12px; color: #34D399; margin-bottom: 8px;">
+                        Final_Risk = round(0.60 * Rules + 0.40 * ML_Score)
+                    </div>
+                    <div style="font-size: 12px; color: #CBD5E1; line-height: 1.5;">
+                        Tiers: 0-30 = LOW &bull; 31-60 = MEDIUM &bull; 61-80 = HIGH &bull; 81-100 = CRITICAL (Auto-Block)
+                    </div>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "CUSTOMER PROTECTION",
+        title: "AI Voice Call Simulator & Automated Account Freezing",
+        body: `
+            <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.5rem; margin-top: 1rem;">
+                <div style="background: #0E1E38; border: 1px solid #162C54; border-left: 3px solid #10B981; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #10B981; margin-bottom: 0.5rem;">Automated Voice Call Experience</h4>
+                    <p style="font-size: 13px; color: #CBD5E1; line-height: 1.5;">
+                        When unusual transactions occur, the system initiates an automated security call with live speech transcript:
+                        <br><br>
+                        <em>"Hello Rajesh, this is FraudGuard AI calling from your bank. We detected an unusual transaction of ₹75,000 from Dubai. Did you authorize this?"</em>
+                        <br><br>
+                        <strong>Simulated Actions:</strong><br>
+                        &bull; <strong>[2] "No, FRAUD!"</strong> &rarr; Instant account freezing<br>
+                        &bull; <strong>[1] "Yes, Authorized"</strong> &rarr; Clears alert
+                    </p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #DC2626; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #F87171; margin-bottom: 0.5rem;">Instant Account Freezing</h4>
+                    <p style="font-size: 13px; color: #FECACA; line-height: 1.5;">
+                        Critical threats immediately set account status to <strong>BLOCKED</strong>, stopping all subsequent transfers and logging the action permanently to the customer audit trail.
+                    </p>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "NETWORK SURVEILLANCE",
+        title: "Transaction Relationship Analysis & Mule Ring Graph",
+        body: `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                <div style="background: #0E1E38; border: 1px solid #162C54; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #38BDF8; margin-bottom: 0.5rem;">HTML5 Canvas Graph Engine</h4>
+                    <p style="font-size: 13px; color: #CBD5E1; line-height: 1.5;">
+                        Visualizes fund flows between accounts (ACC101 &rarr; ACC102 &rarr; ACC105 &rarr; ACC109) with physics nodes and directional links.
+                    </p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #162C54; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #F87171; margin-bottom: 0.5rem;">Money Mule Ring Detection</h4>
+                    <p style="font-size: 13px; color: #CBD5E1; line-height: 1.5;">
+                        Highlights high-risk conduits with pulsing dashed lines and enables 1-click drill-down directly into the flagged account profile.
+                    </p>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "ENGINEERING STACK",
+        title: "Production-Ready Full-Stack Technology Architecture",
+        body: `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 1rem;">
+                <div style="background: #0E1E38; border: 1px solid #1D4ED8; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #60A5FA; margin-bottom: 0.5rem;">Backend Core</h4>
+                    <p style="font-size: 12px; color: #CBD5E1;">Python 3.13 &bull; Flask 3.1 &bull; SQLite3 &bull; 14+ REST Endpoints &bull; Session Auth</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #10B981; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #10B981; margin-bottom: 0.5rem;">Machine Learning</h4>
+                    <p style="font-size: 12px; color: #CBD5E1;">Scikit-Learn Isolation Forest &bull; Pandas &bull; NumPy &bull; Joblib Serialization Cache</p>
+                </div>
+                <div style="background: #0E1E38; border: 1px solid #38BDF8; padding: 1.25rem; border-radius: 4px;">
+                    <h4 style="color: #38BDF8; margin-bottom: 0.5rem;">Frontend &amp; UX</h4>
+                    <p style="font-size: 12px; color: #CBD5E1;">Handcrafted Green &amp; Blue CSS &bull; Chart.js 4.4 &bull; Canvas Engine &bull; Vanilla ES6</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "EVALUATION DEMO",
+        title: "24-Hour Hackathon Jury Demonstration Flow",
+        body: `
+            <div style="background: #0E1E38; border: 1px solid #10B981; padding: 1.5rem; border-radius: 4px; margin-top: 1rem;">
+                <div style="font-size: 14px; color: #FFF; line-height: 1.8;">
+                    <strong>1. Sign In:</strong> Login to console with <code>admin@fraudguard.ai</code> / <code>admin123</code>.<br>
+                    <strong>2. Live Simulation:</strong> Click [ Simulate Transaction ] &rarr; watch 6-stage telemetry execute.<br>
+                    <strong>3. Explainable AI:</strong> Inspect Critical Dubai Fraud (TX10045) with numbered evidence cards (01, 02, 03).<br>
+                    <strong>4. Call Customer:</strong> Click [ Call Customer ] &rarr; simulate customer pressing [2] Fraud &rarr; triggers Instant Account Block.<br>
+                    <strong>5. Batch Ingestion:</strong> Ingest CSV batch and download full compliance audit report.
+                </div>
+            </div>
+        `
+    },
+    {
+        kicker: "CONCLUSION",
+        title: "FraudGuard AI — Ready for Deployment",
+        body: `
+            <div style="text-align: center; padding: 2rem 0;">
+                <h2 style="font-size: 2.2rem; font-weight: 800; color: #10B981; margin-bottom: 0.5rem;">Detect. Analyze. Protect.</h2>
+                <p style="font-size: 1.2rem; color: #CBD5E1; max-width: 650px; margin: 0 auto 2rem auto; line-height: 1.6;">
+                    A complete, battle-tested financial fraud defense system ready for real-world banking and fintech applications.
+                </p>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #38BDF8;">
+                    Thank you! Open for Questions &amp; Live Jury Evaluation.
+                </div>
+            </div>
+        `
+    }
+];
+
+let currentIndex = 0;
+
+function renderSlide(index) {
+    const s = slides[index];
+    document.getElementById('slideKicker').innerText = s.kicker;
+    document.getElementById('slideTitle').innerText = s.title;
+    document.getElementById('slideBody').innerHTML = s.body;
+    document.getElementById('currentSlideNum').innerText = index + 1;
+
+    document.getElementById('prevSlideBtn').disabled = (index === 0);
+    document.getElementById('nextSlideBtn').innerText = (index === slides.length - 1) ? 'Start Over' : 'Next Slide →';
+}
+
+document.getElementById('prevSlideBtn').addEventListener('click', () => {
+    if (currentIndex > 0) {
+        currentIndex--;
+        renderSlide(currentIndex);
+    }
+});
+
+document.getElementById('nextSlideBtn').addEventListener('click', () => {
+    if (currentIndex < slides.length - 1) {
+        currentIndex++;
+    } else {
+        currentIndex = 0;
+    }
+    renderSlide(currentIndex);
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'Space') {
+        if (currentIndex < slides.length - 1) currentIndex++;
+        else currentIndex = 0;
+        renderSlide(currentIndex);
+    } else if (e.key === 'ArrowLeft') {
+        if (currentIndex > 0) currentIndex--;
+        renderSlide(currentIndex);
+    }
+});
+
+renderSlide(0);
+</script>
+{% endblock %}

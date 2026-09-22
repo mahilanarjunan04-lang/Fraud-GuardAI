@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FraudGuard AI Surveillance{% endblock %}
+
+{% block content %}
+<div class="app-main-content">
+
+    <!-- ================= 1. DASHBOARD HERO: SECURITY OVERVIEW ================= -->
+    <div class="dashboard-hero-panel">
+        <div class="dash-hero-header">
+            <div class="dash-title-group">
+                <h1>Security Overview &amp; Incident Defense</h1>
+                <p>Surveillance Lifecycle: High Risk &rarr; SMS &rarr; Voice Call &rarr; Retry &rarr; Auto-Hold &rarr; Admin Review</p>
+            </div>
+            <div class="dash-hero-actions">
+                <button id="simulateTransactionBtn" class="btn btn-green">
+                    <i class="icon-play" style="font-size: 14px;"></i> Simulate Transaction
+                </button>
+                <a href="{{ url_for('upload_view') }}" class="btn btn-dark">
+                    <i class="icon-upload-cloud" style="font-size: 14px;"></i> Upload CSV
+                </a>
+            </div>
+        </div>
+
+        <!-- 5 Metric Rectangular Blocks with Left Vertical Line -->
+        <div class="metrics-overview-grid">
+            <div class="metric-rect-block">
+                <div class="metric-label">Transactions Analyzed</div>
+                <div class="metric-value" id="metric-total-tx">{{ "{:,}".format(metrics.total_transactions) }}</div>
+                <div class="metric-subtext">Cumulative Surveillance</div>
+            </div>
+
+            <div class="metric-rect-block orange">
+                <div class="metric-label">Suspicious Flagged</div>
+                <div class="metric-value" id="metric-susp-tx">{{ "{:,}".format(metrics.suspicious_transactions) }}</div>
+                <div class="metric-subtext">High &amp; Critical Threat Level</div>
+            </div>
+
+            <div class="metric-rect-block danger" style="border-left-color: #F59E0B;">
+                <div class="metric-label">Accounts on Hold</div>
+                <div class="metric-value" id="metric-held-count" style="color: #FCD34D;">{{ metrics.held_accounts if metrics.held_accounts else 1 }}</div>
+                <div class="metric-subtext">Unattended Call &bull; Awaiting Admin</div>
+            </div>
+
+            <div class="metric-rect-block danger">
+                <div class="metric-label">Blocked Accounts</div>
+                <div class="metric-value" id="metric-blocked-count" style="color: #F87171;">{{ metrics.blocked_accounts if metrics.blocked_accounts else 1 }}</div>
+                <div class="metric-subtext">Frozen on Confirmed Fraud</div>
+            </div>
+
+            <div class="metric-rect-block teal">
+                <div class="metric-label">Monitored Volume</div>
+                <div class="metric-value" id="metric-total-val">{{ metrics.formatted_value }}</div>
+                <div class="metric-subtext">Total Processed Value</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 2. INTERACTIVE FRAUD DEFENSE LIFECYCLE FLOWCHART ================= -->
+    <div class="panel-card" style="margin-bottom: 2rem; border-top: 3px solid #10B981; padding: 1.5rem 2rem;">
+        <div class="panel-header" style="margin-bottom: 1.25rem;">
+            <div>
+                <h3 class="panel-title">
+                    <i class="icon-git-commit" style="color: #10B981;"></i> Automated Incident Escalation Protocol
+                </h3>
+                <p style="font-size: 13px; color: #94A3B8; margin-top: 2px;">
+                    Multi-tier cardholder verification &amp; fail-safe account preservation sequence.
+                </p>
+            </div>
+            <span class="risk-tag low" style="font-size: 11px;">ACTIVE PROTOCOL V2.4</span>
+        </div>
+
+        <!-- Flowchart Visual Steps -->
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; align-items: center; text-align: center;">
+            <div style="background: #08142A; border: 1px solid #162C54; border-radius: 4px; padding: 0.75rem 0.5rem;">
+                <div style="font-size: 11px; font-weight: 700; color: #94A3B8;">01. EVENT</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">Transaction</div>
+            </div>
+
+            <div style="color: #10B981; font-weight: 800; font-size: 14px;">&rarr;</div>
+
+            <div style="background: #08142A; border: 1px solid #DC2626; border-radius: 4px; padding: 0.75rem 0.5rem;">
+                <div style="font-size: 11px; font-weight: 700; color: #F87171;">02. AI ENGINE</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">HIGH RISK</div>
+            </div>
+
+            <div style="color: #10B981; font-weight: 800; font-size: 14px;">&rarr;</div>
+
+            <div style="background: #08142A; border: 1px solid #38BDF8; border-radius: 4px; padding: 0.75rem 0.5rem;">
+                <div style="font-size: 11px; font-weight: 700; color: #38BDF8;">03. NOTIFY</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">📱 SMS &bull; 📞 Call (1/2)</div>
+            </div>
+
+            <div style="color: #10B981; font-weight: 800; font-size: 14px;">&rarr;</div>
+
+            <div style="background: #08142A; border: 1px solid #F59E0B; border-radius: 4px; padding: 0.75rem 0.5rem;">
+                <div style="font-size: 11px; font-weight: 700; color: #FCD34D;">04. FAIL-SAFE</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">🔒 Account Hold</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #162C54; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #CBD5E1;">
+            <span><strong>Decision Tree:</strong> Attended &rarr; Verify (Safe / Block) | Missed (2x) &rarr; 🔒 Account Hold &rarr; 👨‍💼 Admin Review &rarr; (Unhold / Block)</span>
+            <span style="color: #34D399; font-weight: 600;">Zero Fund Drainage Guarantee</span>
+        </div>
+    </div>
+
+    <!-- ================= 3. ADMIN REVIEW QUEUE (ACCOUNTS ON HOLD) ================= -->
+    {% if review_queue %}
+    <div class="panel-card" style="margin-bottom: 2rem; border-left: 4px solid #F59E0B;">
+        <div class="panel-header">
+            <div>
+                <h3 class="panel-title" style="color: #FCD34D;">
+                    <i class="icon-user-x"></i> 👨‍💼 Admin Review Queue (Accounts on Hold)
+                </h3>
+                <p style="font-size: 13px; color: #94A3B8; margin-top: 2px;">
+                    These accounts missed consecutive verification calls and are placed on temporary security hold awaiting investigator adjudication.
+                </p>
+            </div>
+            <span class="risk-tag medium">{{ review_queue|length }} PENDING ADJUDICATION</span>
+        </div>
+
+        <div class="table-responsive-container">
+            <table class="fraud-table">
+                <thead>
+                    <tr>
+                        <th>Account ID</th>
+                        <th>Holder Name</th>
+                        <th>Phone</th>
+                        <th>Hold Reason</th>
+                        <th>Threat Score</th>
+                        <th>Hold Status</th>
+                        <th>Admin Adjudication Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for acc in review_queue %}
+                    <tr id="review-row-{{ acc.account_id }}">
+                        <td class="mono" style="font-weight: 700; color: #34D399;">{{ acc.account_id }}</td>
+                        <td>{{ acc.holder_name }}</td>
+                        <td>{{ acc.phone_number }}</td>
+                        <td style="font-size: 12px; color: #CBD5E1;">{{ acc.hold_reason if acc.hold_reason else 'Unattended Verification Call' }}</td>
+                        <td><span class="mono" style="font-weight: 700; color: #FCD34D;">{{ acc.risk_score }} / 100</span></td>
+                        <td><span class="risk-tag medium">🔒 ACCOUNT_HOLD</span></td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-green btn-sm btn-admin-review-safe" data-account-id="{{ acc.account_id }}">
+                                    <i class="icon-check"></i> Safe (Unhold)
+                                </button>
+                                <button class="btn btn-danger btn-sm btn-admin-review-fraud" data-account-id="{{ acc.account_id }}">
+                                    <i class="icon-slash"></i> Fraud (Block Account)
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ================= 4. RISK LANDSCAPE & TRANSACTION ACTIVITY ================= -->
+    <div class="dash-two-col-grid">
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-pie-chart" style="color: #34D399;"></i> Current Risk Landscape
+                </h3>
+                <span class="mono" style="font-size: 12px; color: #94A3B8;">Dynamic Distribution</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: center;">
+                <div style="height: 200px; position: relative;">
+                    <canvas id="riskLandscapeChart"></canvas>
+                </div>
+
+                <div class="risk-breakdown-list">
+                    <div class="risk-legend-row critical">
+                        <div class="risk-label-group">
+                            <span class="risk-tag critical">CRITICAL</span>
+                            <span class="risk-name" style="color: #F87171;">Score 81–100</span>
+                        </div>
+                        <span class="risk-count-badge">{{ metrics.critical_transactions }}</span>
+                    </div>
+
+                    <div class="risk-legend-row high">
+                        <div class="risk-label-group">
+                            <span class="risk-tag high">HIGH</span>
+                            <span class="risk-name" style="color: #FB923C;">Score 61–80</span>
+                        </div>
+                        <span class="risk-count-badge">{{ metrics.high_transactions }}</span>
+                    </div>
+
+                    <div class="risk-legend-row medium">
+                        <div class="risk-label-group">
+                            <span class="risk-tag medium">MEDIUM</span>
+                            <span class="risk-name" style="color: #FCD34D;">Score 31–60</span>
+                        </div>
+                        <span class="risk-count-badge">{{ metrics.medium_transactions }}</span>
+                    </div>
+
+                    <div class="risk-legend-row low">
+                        <div class="risk-label-group">
+                            <span class="risk-tag low">LOW</span>
+                            <span class="risk-name" style="color: #6EE7B7;">Score 0–30</span>
+                        </div>
+                        <span class="risk-count-badge">{{ metrics.low_transactions }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-activity" style="color: #38BDF8;"></i> Transaction Activity
+                </h3>
+                <span class="mono" style="font-size: 12px; color: #94A3B8;">Normal vs Suspicious (7-Day)</span>
+            </div>
+
+            <div style="height: 200px;">
+                <canvas id="transactionActivityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 5. RECENT SUSPICIOUS ACTIVITY TABLE ================= -->
+    <div class="panel-card" style="margin-bottom: 2rem;">
+        <div class="panel-header">
+            <div>
+                <h3 class="panel-title">
+                    <i class="icon-shield-alert" style="color: #F87171;"></i> Recent Suspicious Activity &amp; Live Verification
+                </h3>
+                <p style="font-size: 13px; color: #94A3B8; margin-top: 2px;">
+                    Click <strong>Verify Call</strong> to execute the full User Call &rarr; Hold &rarr; Admin Review verification flow.
+                </p>
+            </div>
+            <a href="{{ url_for('transactions_view') }}" class="panel-action-link">
+                View All Transactions &rarr;
+            </a>
+        </div>
+
+        <div class="table-responsive-container">
+            <table class="fraud-table" id="recentThreatsTable">
+                <thead>
+                    <tr>
+                        <th>Transaction</th>
+                        <th>Account</th>
+                        <th>Amount</th>
+                        <th>Location</th>
+                        <th>Time</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
+                        <th>Verification Call</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in recent_transactions %}
+                    <tr class="risk-{{ tx.risk_level.lower() }}">
+                        <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #34D399;">
+                            {{ tx.transaction_id }}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('account_details_view', account_id=tx.account_id) }}" style="color: #CBD5E1; text-decoration: underline;">
+                                {{ tx.account_id }}
+                            </a>
+                        </td>
+                        <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">
+                            ₹{{ "{:,.2f}".format(tx.amount) }}
+                        </td>
+                        <td>{{ tx.location }}</td>
+                        <td>{{ tx.time_str }}</td>
+                        <td>
+                            <span class="mono" style="font-weight: 700; color: {% if tx.risk_score >= 81 %}#F87171{% elif tx.risk_score >= 61 %}#FB923C{% elif tx.risk_score >= 31 %}#FCD34D{% else %}#6EE7B7{% endif %};">
+                                {{ tx.risk_score }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="risk-tag {{ tx.risk_level.lower() }}">{{ tx.risk_level }}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-green btn-sm btn-start-call-flow" data-account-id="{{ tx.account_id }}" data-tx-id="{{ tx.transaction_id }}" data-amount="{{ '{:,.0f}'.format(tx.amount) }}" data-location="{{ tx.location }}">
+                                <i class="icon-phone"></i> Verify Call
+                            </button>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('transaction_details_view', tx_id=tx.transaction_id) }}" class="btn btn-secondary btn-sm">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ================= 6. FRAUD NETWORK ANALYSIS ================= -->
+    <div class="panel-card">
+        <div class="panel-header">
+            <div>
+                <h3 class="panel-title">
+                    <i class="icon-git-fork" style="color: #38BDF8;"></i> Transaction Relationship Analysis
+                </h3>
+                <p style="font-size: 13px; color: #94A3B8; margin-top: 2px;">
+                    Coordinated activity identified across connected accounts. (Click any account node to inspect profile)
+                </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem; font-size: 12px;">
+                <span style="display: flex; align-items: center; gap: 4px; color: #DC2626;">
+                    <span style="display: inline-block; width: 12px; height: 3px; background: #DC2626; border-radius: 1px;"></span> Suspicious Link
+                </span>
+                <span style="display: flex; align-items: center; gap: 4px; color: #10B981;">
+                    <span style="display: inline-block; width: 12px; height: 3px; background: #10B981; border-radius: 1px;"></span> Verified Transfer
+                </span>
+            </div>
+        </div>
+
+        <div class="network-graph-container">
+            <canvas id="networkCanvas"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================= SIMULATION MODAL ================= -->
+<div class="modal-backdrop" id="simulationModal">
+    <div class="sim-modal-card">
+        <div class="modal-header">
+            <div>
+                <h3>Simulate Real-Time Transaction Attack</h3>
+                <p style="font-size: 12px; color: #94A3B8; margin-top: 2px;">
+                    Evaluates multi-vector rules &amp; Isolation Forest ML with customer call initiation.
+                </p>
+            </div>
+            <button class="modal-close-btn" id="closeSimModal">&times;</button>
+        </div>
+
+        <div id="simTimeline" class="sim-steps-timeline">
+        </div>
+
+        <div id="simResultBox" style="display: none; background: #0E1F3D; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">
+                    Transaction: <span id="resTxId" class="mono" style="color: #34D399;"></span> (<span id="resAmount"></span>)
+                </div>
+                <div>
+                    <span id="resLevel" class="risk-tag"></span>
+                    <span id="resScore" class="mono" style="font-weight: 700; margin-left: 6px; color: #FFF;"></span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #162C54;">
+                <span style="font-size: 12px; color: #38BDF8;">📱 SMS Sent &bull; Ready for Call Verification</span>
+                <button id="resLaunchCallWorkflowBtn" class="btn btn-green btn-sm">
+                    <i class="icon-phone"></i> Launch Verification Call Flow &rarr;
+                </button>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #162C54;">
+            <span style="font-size: 12px; color: #94A3B8;">Isolation Forest Active</span>
+            <button id="executeSimBtn" class="btn btn-green">
+                Run Live Simulation &rarr;
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MULTI-STAGE USER CALL & DECISION TREE WORKFLOW MODAL ================= -->
+<div class="modal-backdrop" id="callWorkflowModal">
+    <div class="sim-modal-card" style="max-width: 600px;">
+        <div class="modal-header">
+            <div>
+                <span id="flowStepKicker" style="font-size: 11px; font-weight: 700; color: #10B981; letter-spacing: 0.05em;">
+                    WORKFLOW STEP 04: CALL USER
+                </span>
+                <h3 id="flowCallAttemptTitle" style="font-size: 1.25rem; margin-top: 2px;">
+                    📞 Outbound Security Call Attempt #1
+                </h3>
+            </div>
+            <button class="modal-close-btn" id="closeCallWorkflowModal">&times;</button>
+        </div>
+
+        <!-- Stage A: Calling User -->
+        <div id="flowCallingPane" style="text-align: center; padding: 1.5rem 0;">
+            <div class="call-pulse-ring">
+                <i class="icon-phone"></i>
+            </div>
+            <p id="flowCallMeta" style="font-size: 13px; color: #CBD5E1; margin-bottom: 1.5rem;">
+                Dialing registered cardholder phone...
+            </p>
+
+            <div style="font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 0.75rem;">
+                DID THE USER ATTEND THE CALL?
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button id="flowCallAttendedBtn" class="btn btn-green" style="flex: 1;">
+                    <i class="icon-check"></i> YES (Call Attended)
+                </button>
+                <button id="flowCallNotAttendedBtn" class="btn btn-danger" style="flex: 1;">
+                    <i class="icon-x"></i> NO (Not Attended / Missed)
+                </button>
+            </div>
+        </div>
+
+        <!-- Stage B: Attended -> Verify (Yes -> Safe / No -> Block) -->
+        <div id="flowVerifyPane" style="display: none; padding: 1rem 0;">
+            <div style="background: #0E1F3D; border: 1px solid #162C54; border-left: 3px solid #10B981; border-radius: 4px; padding: 1rem; margin-bottom: 1.5rem;">
+                <div style="font-size: 11px; font-weight: 700; color: #34D399; margin-bottom: 4px; text-transform: uppercase;">
+                    Interactive Voice Audio Transcript (Speaking to User):
+                </div>
+                <p id="flowTranscriptText" style="font-size: 13px; color: #FFFFFF; line-height: 1.5;"></p>
+            </div>
+
+            <div style="font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 0.75rem; text-align: center;">
+                USER RESPONSE / VERIFICATION OUTCOME:
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button id="flowVerifySafeBtn" class="btn btn-green" style="flex: 1;">
+                    <i class="icon-shield-check"></i> [1] "YES, Authorized" &rarr; UNHOLD
+                </button>
+                <button id="flowVerifyFraudBtn" class="btn btn-danger" style="flex: 1;">
+                    <i class="icon-shield-x"></i> [2] "NO, FRAUD!" &rarr; BLOCK ACCOUNT
+                </button>
+            </div>
+        </div>
+
+        <!-- Stage C: Not Attended 2x -> Account Hold -> Admin Review -->
+        <div id="flowHoldReviewPane" style="display: none; padding: 1rem 0;">
+            <div style="background: rgba(220, 38, 38, 0.15); border: 1px solid #DC2626; border-left: 4px solid #DC2626; border-radius: 4px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                <div style="font-weight: 800; color: #F87171; font-size: 1rem;">
+                    🔒 AUTOMATIC ACCOUNT HOLD ACTIVATED
+                </div>
+                <div id="flowHoldReason" style="font-size: 12px; color: #FECACA; margin-top: 4px;">
+                    Customer missed both call verification attempts. Account is placed on security hold to prevent financial loss.
+                </div>
+            </div>
+
+            <div style="background: #0E1F3D; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; margin-bottom: 1.5rem;">
+                <div style="font-size: 11px; font-weight: 700; color: #FCD34D; text-transform: uppercase; margin-bottom: 4px;">
+                    👨‍💼 ESCALATED TO ADMIN REVIEW QUEUE
+                </div>
+                <div style="font-size: 13px; color: #CBD5E1;">
+                    Security Investigator Adjudication for Account <strong id="flowHoldAccId" class="mono" style="color: #34D399;"></strong>:
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button id="flowAdminSafeBtn" class="btn btn-green" style="flex: 1;">
+                    <i class="icon-unlock"></i> Mark SAFE &rarr; UNHOLD ACCOUNT
+                </button>
+                <button id="flowAdminFraudBtn" class="btn btn-danger" style="flex: 1;">
+                    <i class="icon-lock"></i> Confirm FRAUD &rarr; BLOCK ACCOUNT
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

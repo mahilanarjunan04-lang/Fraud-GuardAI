@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction Monitoring - FraudGuard AI{% endblock %}
+
+{% block content %}
+<div class="app-main-content">
+
+    <!-- Header Block -->
+    <div style="margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1 style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
+                Transaction Monitoring
+            </h1>
+            <p style="font-size: 0.88rem; color: #94A3B8; margin-top: 0.2rem;">
+                Review transaction activity and investigate unusual behavior across payment gateways.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{{ url_for('api_export_report') }}" class="btn btn-secondary btn-sm" download>
+                <i class="icon-download"></i> Export CSV Report
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter & Search Controls (Rectangular Inputs, No Pills) -->
+    <div class="panel-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+        <form method="GET" action="{{ url_for('transactions_view') }}" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
+            <div>
+                <label class="form-label" style="font-size: 12px; color: #94A3B8; margin-bottom: 4px;">Search Record</label>
+                <input 
+                    type="text" 
+                    name="search" 
+                    class="form-input" 
+                    placeholder="Search by Tx ID, Account, Location..."
+                    value="{{ search_query }}"
+                >
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 12px; color: #94A3B8; margin-bottom: 4px;">Risk Level</label>
+                <select name="risk" class="form-select">
+                    <option value="ALL" {% if risk_filter == 'ALL' %}selected{% endif %}>All Risk Levels</option>
+                    <option value="CRITICAL" {% if risk_filter == 'CRITICAL' %}selected{% endif %}>Critical Risk (81-100)</option>
+                    <option value="HIGH" {% if risk_filter == 'HIGH' %}selected{% endif %}>High Risk (61-80)</option>
+                    <option value="MEDIUM" {% if risk_filter == 'MEDIUM' %}selected{% endif %}>Medium Risk (31-60)</option>
+                    <option value="LOW" {% if risk_filter == 'LOW' %}selected{% endif %}>Low Risk (0-30)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 12px; color: #94A3B8; margin-bottom: 4px;">Location</label>
+                <select name="location" class="form-select">
+                    <option value="ALL" {% if location_filter == 'ALL' %}selected{% endif %}>All Locations</option>
+                    <option value="Chennai" {% if location_filter == 'Chennai' %}selected{% endif %}>Chennai</option>
+                    <option value="Coimbatore" {% if location_filter == 'Coimbatore' %}selected{% endif %}>Coimbatore</option>
+                    <option value="Erode" {% if location_filter == 'Erode' %}selected{% endif %}>Erode</option>
+                    <option value="Bangalore" {% if location_filter == 'Bangalore' %}selected{% endif %}>Bangalore</option>
+                    <option value="Mumbai" {% if location_filter == 'Mumbai' %}selected{% endif %}>Mumbai</option>
+                    <option value="Delhi" {% if location_filter == 'Delhi' %}selected{% endif %}>Delhi</option>
+                    <option value="Dubai" {% if location_filter == 'Dubai' %}selected{% endif %}>Dubai</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label" style="font-size: 12px; color: #94A3B8; margin-bottom: 4px;">Investigation Status</label>
+                <select name="status" class="form-select">
+                    <option value="ALL" {% if status_filter == 'ALL' %}selected{% endif %}>All Statuses</option>
+                    <option value="NORMAL" {% if status_filter == 'NORMAL' %}selected{% endif %}>NORMAL</option>
+                    <option value="REVIEW" {% if status_filter == 'REVIEW' %}selected{% endif %}>REVIEW</option>
+                    <option value="SUSPICIOUS" {% if status_filter == 'SUSPICIOUS' %}selected{% endif %}>SUSPICIOUS</option>
+                    <option value="CRITICAL" {% if status_filter == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.25rem;">
+                    Apply Filters
+                </button>
+                <a href="{{ url_for('transactions_view') }}" class="btn btn-secondary" style="padding: 0.65rem 0.85rem;" title="Reset Filters">
+                    Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="panel-card" style="padding: 0;">
+        <div style="padding: 1rem 1.25rem; border-bottom: 1px solid #1E3360; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: #94A3B8; font-weight: 600;">
+                Showing {{ transactions|length }} of {{ total_count }} Transactions
+            </span>
+            <span class="mono" style="font-size: 12px; color: #60A5FA;">
+                Page {{ page }} of {{ total_pages }}
+            </span>
+        </div>
+
+        <div class="table-responsive-container" style="border: none;">
+            <table class="fraud-table">
+                <thead>
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Account</th>
+                        <th>Amount</th>
+                        <th>Location</th>
+                        <th>Device Signature</th>
+                        <th>Timestamp</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr class="risk-{{ tx.risk_level.lower() }}">
+                        <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #60A5FA;">
+                            {{ tx.transaction_id }}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('account_details_view', account_id=tx.account_id) }}" style="color: #CBD5E1; text-decoration: underline;">
+                                {{ tx.account_id }}
+                            </a>
+                        </td>
+                        <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">
+                            ₹{{ "{:,.2f}".format(tx.amount) }}
+                        </td>
+                        <td>{{ tx.location }}</td>
+                        <td style="font-size: 12px; color: #94A3B8; max-width: 180px; overflow: hidden; text-overflow: ellipsis;">
+                            {{ tx.device }}
+                        </td>
+                        <td>{{ tx.time_str }}</td>
+                        <td>
+                            <span class="mono" style="font-weight: 700; color: {% if tx.risk_score >= 81 %}#F87171{% elif tx.risk_score >= 61 %}#FB923C{% elif tx.risk_score >= 31 %}#FCD34D{% else %}#6EE7B7{% endif %};">
+                                {{ tx.risk_score }} / 100
+                            </span>
+                        </td>
+                        <td>
+                            <span class="risk-tag {{ tx.risk_level.lower() }}">{{ tx.risk_level }}</span>
+                        </td>
+                        <td>
+                            <span style="font-size: 12px; font-weight: 600; color: #CBD5E1;">{{ tx.status }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('transaction_details_view', tx_id=tx.transaction_id) }}" class="btn btn-secondary btn-sm">
+                                Investigate &rarr;
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 2rem; color: #94A3B8;">
+                            No transactions found matching the applied filter criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if total_pages > 1 %}
+        <div style="padding: 1rem 1.25rem; border-top: 1px solid #1E3360; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                {% if page > 1 %}
+                <a href="{{ url_for('transactions_view', page=page-1, risk=risk_filter, location=location_filter, status=status_filter, search=search_query) }}" class="btn btn-secondary btn-sm">
+                    &larr; Previous Page
+                </a>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 4px;">
+                {% for p in range(1, total_pages + 1) %}
+                <a href="{{ url_for('transactions_view', page=p, risk=risk_filter, location=location_filter, status=status_filter, search=search_query) }}" class="btn btn-sm {% if p == page %}btn-primary{% else %}btn-secondary{% endif %}" style="min-width: 32px;">
+                    {{ p }}
+                </a>
+                {% endfor %}
+            </div>
+
+            <div>
+                {% if page < total_pages %}
+                <a href="{{ url_for('transactions_view', page=page+1, risk=risk_filter, location=location_filter, status=status_filter, search=search_query) }}" class="btn btn-secondary btn-sm">
+                    Next Page &rarr;
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: FraudGuard AI (Flask App)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "FLASK_ENV": "development",
+                "FLASK_DEBUG": "1"
+            }
+        },
+        {
+            "name": "Python: Generate PowerPoint Deck",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/generate_ppt.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Run Test Suite",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_app.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}

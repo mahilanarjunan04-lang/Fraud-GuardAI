@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Security Alerts - FraudGuard AI{% endblock %}
+
+{% block content %}
+<div class="app-main-content">
+
+    <div style="margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1 style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
+                Security Alerts Feed
+            </h1>
+            <p style="font-size: 0.88rem; color: #94A3B8; margin-top: 0.2rem;">
+                Active investigation incidents requiring analyst intervention, cardholder call verification, or compliance hold.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('alerts_view', status='ALL') }}" class="btn btn-sm {% if status_filter == 'ALL' %}btn-green{% else %}btn-secondary{% endif %}">
+                All Alerts
+            </a>
+            <a href="{{ url_for('alerts_view', status='PENDING') }}" class="btn btn-sm {% if status_filter == 'PENDING' %}btn-green{% else %}btn-secondary{% endif %}">
+                Pending
+            </a>
+            <a href="{{ url_for('alerts_view', status='UNDER_INVESTIGATION') }}" class="btn btn-sm {% if status_filter == 'UNDER_INVESTIGATION' %}btn-green{% else %}btn-secondary{% endif %}">
+                Under Investigation
+            </a>
+        </div>
+    </div>
+
+    <!-- Alerts List -->
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+        {% for alert in alerts %}
+        <div id="alert-row-{{ alert.alert_id }}" class="panel-card" style="border-left: 4px solid {% if alert.severity == 'CRITICAL' %}#DC2626{% elif alert.severity == 'HIGH' %}#EA580C{% else %}#D97706{% endif %}; padding: 1.25rem 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 320px;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <span class="risk-tag {{ alert.severity.lower() }}">
+                            {{ alert.severity }} ALERT
+                        </span>
+                        <span class="mono" style="font-weight: 800; color: #34D399; font-size: 1.1rem;">
+                            {{ alert.alert_id }}
+                        </span>
+                        <span style="color: #94A3B8; font-size: 13px;">&bull; Ref Transaction:</span>
+                        <a href="{{ url_for('transaction_details_view', tx_id=alert.transaction_id) }}" class="mono" style="font-weight: 700; color: #FFFFFF; text-decoration: underline;">
+                            {{ alert.transaction_id }}
+                        </a>
+                        <span style="color: #94A3B8; font-size: 13px;">(Account: {{ alert.account_id }})</span>
+                    </div>
+
+                    <div style="font-size: 0.95rem; font-weight: 600; color: #F1F5F9; margin-bottom: 0.6rem;">
+                        {{ alert.message }}
+                    </div>
+
+                    {% if alert.reasons_list %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                        <span style="font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase;">FLAGGED REASONS:</span>
+                        {% for r in alert.reasons_list %}
+                        <span style="background: #08142A; border: 1px solid #162C54; border-radius: 4px; padding: 2px 8px; font-size: 11px; color: #CBD5E1;">
+                            {{ r }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Right Action Buttons -->
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem;">
+                    <div>
+                        <span id="status-badge-{{ alert.alert_id }}" class="risk-tag {% if alert.status == 'PENDING' %}critical{% elif alert.status == 'UNDER_INVESTIGATION' %}medium{% else %}low{% endif %}">
+                            {{ alert.status }}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                        <button class="btn btn-green btn-sm btn-call-customer" data-account-id="{{ alert.account_id }}" data-tx-id="{{ alert.transaction_id }}">
+                            <i class="icon-phone"></i> Call
+                        </button>
+                        <button class="btn btn-primary btn-sm btn-send-message" data-account-id="{{ alert.account_id }}" data-tx-id="{{ alert.transaction_id }}">
+                            <i class="icon-message-square"></i> SMS
+                        </button>
+                        <a href="{{ url_for('transaction_details_view', tx_id=alert.transaction_id) }}" class="btn btn-secondary btn-sm">
+                            View
+                        </a>
+                        <button class="btn btn-secondary btn-sm btn-review-alert" data-alert-id="{{ alert.alert_id }}">
+                            Review
+                        </button>
+                        <button class="btn btn-dark btn-sm btn-dismiss-alert" data-alert-id="{{ alert.alert_id }}">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="panel-card" style="text-align: center; padding: 3rem; color: #94A3B8;">
+            <i class="icon-check-circle" style="font-size: 2rem; color: #10B981; margin-bottom: 0.5rem; display: block;"></i>
+            <h3>No Active Security Alerts</h3>
+            <p style="font-size: 13px; margin-top: 4px;">All transactions currently operating within normal security parameters.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Call Modal -->
+<div class="modal-backdrop" id="customerCallModal">
+    <div class="sim-modal-card" style="max-width: 540px; text-align: center;">
+        <div class="modal-header">
+            <h3 style="font-size: 1.15rem;">Automated Voice Security Call</h3>
+            <button class="modal-close-btn" id="closeCallModal">&times;</button>
+        </div>
+
+        <div class="call-pulse-ring">
+            <i class="icon-phone"></i>
+        </div>
+
+        <div id="callStatusText" style="font-size: 14px; color: #CBD5E1; margin-bottom: 1rem;">
+            Connecting to customer phone...
+        </div>
+
+        <div id="callTranscriptBox" style="display: none; background: #0E1F3D; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; text-align: left; margin-bottom: 1.25rem;">
+            <div style="font-size: 11px; font-weight: 700; color: #34D399; margin-bottom: 4px; text-transform: uppercase;">
+                AI Voice Security Officer (Live Script):
+            </div>
+            <p id="callTranscriptText" style="font-size: 13px; color: #FFFFFF; line-height: 1.5;"></p>
+        </div>
+
+        <div id="callActionsGroup" style="display: none; flex-direction: column; gap: 0.75rem;">
+            <div style="font-size: 12px; color: #94A3B8; font-weight: 600;">
+                SIMULATE CUSTOMER RESPONSE (Interactive Hackathon Demo):
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button id="callConfirmFraudBtn" class="btn btn-danger" style="flex: 1;">
+                    <i class="icon-shield-x"></i> [2] "No, FRAUD!" &rarr; BLOCK
+                </button>
+                <button id="callConfirmSafeBtn" class="btn btn-green" style="flex: 1;">
+                    <i class="icon-shield-check"></i> [1] "Yes, I authorized this."
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

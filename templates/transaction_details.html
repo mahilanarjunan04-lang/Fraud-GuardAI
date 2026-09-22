@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Investigate {{ tx.transaction_id }} - FraudGuard AI{% endblock %}
+
+{% block content %}
+<div class="app-main-content">
+
+    <div style="margin-bottom: 1.25rem;">
+        <a href="{{ url_for('transactions_view') }}" style="font-size: 13px; color: #34D399; text-decoration: none;">
+            &larr; Back to Transaction Monitoring
+        </a>
+    </div>
+
+    <!-- Blocked Account Alert Banner if Account is Blocked -->
+    {% if account and account.status == 'BLOCKED' %}
+    <div id="accountBlockedBanner" style="background: rgba(220, 38, 38, 0.2); border: 1px solid #DC2626; border-left: 4px solid #DC2626; border-radius: 4px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <div style="font-weight: 800; color: #F87171; font-size: 0.95rem;">
+                🚨 ACCOUNT {{ account.account_id }} IS CURRENTLY BLOCKED &amp; FROZEN
+            </div>
+            <div style="font-size: 12px; color: #FECACA; margin-top: 2px;">
+                Reason: {{ account.block_reason if account.block_reason else 'High risk fraud incident detected' }}
+            </div>
+        </div>
+        <button id="btnUnblockAccount" class="btn btn-green btn-sm" data-account-id="{{ account.account_id }}">
+            <i class="icon-unlock"></i> Unblock Account
+        </button>
+    </div>
+    {% else %}
+    <div id="accountBlockedBanner" style="display: none; background: rgba(220, 38, 38, 0.2); border: 1px solid #DC2626; border-left: 4px solid #DC2626; border-radius: 4px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 800; color: #F87171; font-size: 0.95rem;">
+            🚨 ACCOUNT IS BLOCKED: All card and transfer capabilities are frozen.
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Header Block -->
+    <div class="dashboard-hero-panel" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem;">
+                    <span class="mono" style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF;">
+                        {{ tx.transaction_id }}
+                    </span>
+                    <span class="risk-tag {{ tx.risk_level.lower() }}" style="font-size: 0.85rem; padding: 0.3rem 0.75rem;">
+                        {{ tx.risk_level }} RISK
+                    </span>
+                    <span id="accountStatusBadge" class="risk-tag {% if account and account.status == 'BLOCKED' %}blocked{% else %}active{% endif %}">
+                        ACCOUNT: {{ account.status if account else 'ACTIVE' }}
+                    </span>
+                </div>
+                <p style="font-size: 0.9rem; color: #94A3B8;">
+                    Gateway Surveillance &bull; Customer: <strong>{{ account.holder_name if account else 'N/A' }}</strong> ({{ account.phone_number if account else '+91 98450 12345' }})
+                </p>
+            </div>
+
+            <!-- Urgent Customer Response Actions (Call, Message, Block) -->
+            <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                <button class="btn btn-green btn-call-customer" data-account-id="{{ tx.account_id }}" data-tx-id="{{ tx.transaction_id }}" data-amount="{{ '{:,.0f}'.format(tx.amount) }}" data-location="{{ tx.location }}">
+                    <i class="icon-phone-call"></i> Call Customer
+                </button>
+                <button class="btn btn-primary btn-send-message" data-account-id="{{ tx.account_id }}" data-tx-id="{{ tx.transaction_id }}" data-amount="{{ '{:,.0f}'.format(tx.amount) }}" data-location="{{ tx.location }}">
+                    <i class="icon-message-square"></i> Send Security SMS
+                </button>
+                {% if not account or account.status != 'BLOCKED' %}
+                <button id="btnBlockAccount" class="btn btn-danger" data-account-id="{{ tx.account_id }}" data-tx-id="{{ tx.transaction_id }}">
+                    <i class="icon-lock"></i> Block Account
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Metadata Grid -->
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #1A3464;">
+            <div>
+                <div class="metric-label">Amount Transferred</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 800; color: #FFFFFF;">
+                    ₹{{ "{:,.2f}".format(tx.amount) }}
+                </div>
+            </div>
+
+            <div>
+                <div class="metric-label">Originating Account</div>
+                <div class="mono" style="font-size: 1.1rem; font-weight: 700;">
+                    <a href="{{ url_for('account_details_view', account_id=tx.account_id) }}" style="color: #34D399; text-decoration: underline;">
+                        {{ tx.account_id }}
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <div class="metric-label">Recipient Account</div>
+                <div class="mono" style="font-size: 1.1rem; font-weight: 700; color: #CBD5E1;">
+                    {{ tx.recipient_account_id if tx.recipient_account_id else 'ACC105' }}
+                </div>
+            </div>
+
+            <div>
+                <div class="metric-label">Geographic Location</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #FFFFFF;">
+                    {{ tx.location }}
+                </div>
+            </div>
+
+            <div>
+                <div class="metric-label">Authorization Time</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #FFFFFF;">
+                    {{ tx.time_str }}
+                </div>
+            </div>
+
+            <div>
+                <div class="metric-label">Hardware Device</div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: #CBD5E1; word-break: break-word;">
+                    {{ tx.device }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main 2 Column Investigation -->
+    <div class="investigation-grid">
+        <div>
+            <!-- Horizontal Risk Bar -->
+            <div class="horizontal-risk-bar-container">
+                <div class="risk-bar-meta">
+                    <div>
+                        <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #94A3B8; letter-spacing: 0.05em;">
+                            Risk Assessment Score
+                        </div>
+                        <div class="risk-score-display">
+                            {{ tx.risk_score }} <span style="font-size: 1rem; color: #94A3B8; font-weight: 500;">/ 100</span>
+                        </div>
+                    </div>
+                    <span class="risk-tag {{ tx.risk_level.lower() }}" style="font-size: 0.85rem;">
+                        {{ tx.risk_level }}
+                    </span>
+                </div>
+
+                <div class="risk-bar-track">
+                    <div class="risk-bar-fill {{ tx.risk_level.lower() }}" style="width: {{ tx.risk_score }}%;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #64748B; margin-top: 6px;">
+                    <span>0 (Low)</span>
+                    <span>30 (Medium)</span>
+                    <span>60 (High)</span>
+                    <span>80 (Critical)</span>
+                    <span>100</span>
+                </div>
+            </div>
+
+            <!-- Scoring Engine Breakdown -->
+            <div class="panel-card" style="margin-bottom: 1.5rem;">
+                <div class="panel-header">
+                    <h3 class="panel-title">
+                        <i class="icon-layers" style="color: #34D399;"></i> Scoring Engine Breakdown
+                    </h3>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="background: #08142A; border: 1px solid #162C54; border-left: 3px solid #10B981; border-radius: 4px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">Behavioral Rule Heuristics</div>
+                            <div style="font-size: 11px; color: #94A3B8;">Weight: 60% &bull; Multi-vector penalty logic</div>
+                        </div>
+                        <span class="mono" style="font-size: 1.1rem; font-weight: 700; color: #34D399;">
+                            {{ tx.rule_score }} / 100
+                        </span>
+                    </div>
+
+                    <div style="background: #08142A; border: 1px solid #162C54; border-left: 3px solid #38BDF8; border-radius: 4px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">Scikit-Learn Isolation Forest</div>
+                            <div style="font-size: 11px; color: #94A3B8;">Weight: 40% &bull; Unsupervised Anomaly Plane</div>
+                        </div>
+                        <span class="mono" style="font-size: 1.1rem; font-weight: 700; color: #38BDF8;">
+                            {{ tx.ml_score }} / 100
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Communication Log -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h3 class="panel-title">
+                        <i class="icon-phone" style="color: #34D399;"></i> Customer Outreach &amp; Incident Log
+                    </h3>
+                </div>
+
+                <div style="font-size: 12px;">
+                    {% for comm in communications %}
+                    <div style="padding: 0.6rem 0; border-bottom: 1px solid #162C54;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <strong style="color: #34D399;">{{ comm.type }} &bull; {{ comm.status }}</strong>
+                            <span style="color: #64748B;">{{ comm.created_at }}</span>
+                        </div>
+                        <div style="color: #CBD5E1;">{{ comm.message_content }}</div>
+                    </div>
+                    {% else %}
+                    <div style="color: #94A3B8; padding: 0.5rem 0;">No prior customer outreach recorded for this account.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Explainable AI Evidence Reasons -->
+        <div>
+            <div class="panel-card" style="margin-bottom: 1.5rem;">
+                <div class="panel-header">
+                    <div>
+                        <h3 class="panel-title">
+                            <i class="icon-help-circle" style="color: #F87171;"></i> Why was this transaction flagged?
+                        </h3>
+                        <p style="font-size: 12px; color: #94A3B8; margin-top: 2px;">
+                            Explainable AI root-cause factors synthesized by the forensic audit engine.
+                        </p>
+                    </div>
+                    <span class="risk-tag {% if tx.risk_score >= 61 %}high{% else %}low{% endif %}">
+                        {{ reasons|length }} FACTORS
+                    </span>
+                </div>
+
+                <div class="explainable-reason-list">
+                    {% for reason in reasons %}
+                    <div class="reason-rect-row {{ reason.severity.lower() if reason.severity else 'high' }}">
+                        <span class="reason-index-code">{{ reason.code }}</span>
+                        <div>
+                            <div class="reason-title">{{ reason.title }}</div>
+                            <div class="reason-desc">{{ reason.description }}</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="reason-rect-row low">
+                        <span class="reason-index-code">00</span>
+                        <div>
+                            <div class="reason-title">Standard Operating Baseline</div>
+                            <div class="reason-desc">No anomalous variance detected. Transaction complies with standard behavioral parameters.</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recent Transactions by Same Account -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h3 class="panel-title">
+                        <i class="icon-clock" style="color: #34D399;"></i> Recent Activity by {{ tx.account_id }}
+                    </h3>
+                </div>
+
+                <div class="table-responsive-container">
+                    <table class="fraud-table">
+                        <thead>
+                            <tr>
+                                <th>Tx ID</th>
+                                <th>Amount</th>
+                                <th>Location</th>
+                                <th>Time</th>
+                                <th>Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hist in account_history %}
+                            <tr class="risk-{{ hist.risk_level.lower() }}">
+                                <td class="mono" style="font-weight: 700; color: #34D399;">{{ hist.transaction_id }}</td>
+                                <td class="mono">₹{{ "{:,.2f}".format(hist.amount) }}</td>
+                                <td>{{ hist.location }}</td>
+                                <td>{{ hist.time_str }}</td>
+                                <td><span class="risk-tag {{ hist.risk_level.lower() }}">{{ hist.risk_level }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================= CUSTOMER VOICE CALL MODAL ================= -->
+<div class="modal-backdrop" id="customerCallModal">
+    <div class="sim-modal-card" style="max-width: 540px; text-align: center;">
+        <div class="modal-header">
+            <h3 style="font-size: 1.15rem;">Automated Voice Security Call</h3>
+            <button class="modal-close-btn" id="closeCallModal">&times;</button>
+        </div>
+
+        <div class="call-pulse-ring">
+            <i class="icon-phone"></i>
+        </div>
+
+        <div id="callStatusText" style="font-size: 14px; color: #CBD5E1; margin-bottom: 1rem;">
+            Connecting to customer phone...
+        </div>
+
+        <!-- Call Transcript Box -->
+        <div id="callTranscriptBox" style="display: none; background: #0E1F3D; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; text-align: left; margin-bottom: 1.25rem;">
+            <div style="font-size: 11px; font-weight: 700; color: #34D399; margin-bottom: 4px; text-transform: uppercase;">
+                AI Voice Security Officer (Live Script):
+            </div>
+            <p id="callTranscriptText" style="font-size: 13px; color: #FFFFFF; line-height: 1.5;"></p>
+        </div>
+
+        <!-- Simulated Customer Decision Buttons -->
+        <div id="callActionsGroup" style="display: none; flex-direction: column; gap: 0.75rem;">
+            <div style="font-size: 12px; color: #94A3B8; font-weight: 600;">
+                SIMULATE CUSTOMER RESPONSE (Interactive Hackathon Demo):
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button id="callConfirmFraudBtn" class="btn btn-danger" style="flex: 1;">
+                    <i class="icon-shield-x"></i> [2] "No, I did NOT make this!" &rarr; BLOCK
+                </button>
+                <button id="callConfirmSafeBtn" class="btn btn-green" style="flex: 1;">
+                    <i class="icon-shield-check"></i> [1] "Yes, I authorized this."
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

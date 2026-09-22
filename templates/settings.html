@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Engine Configuration - FraudGuard AI{% endblock %}
+
+{% block content %}
+<div class="app-main-content">
+
+    <div style="margin-bottom: 1.75rem;">
+        <h1 style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
+            Detection Engine Configuration
+        </h1>
+        <p style="font-size: 0.88rem; color: #94A3B8; margin-top: 0.2rem;">
+            Calibrate rule weighting, Isolation Forest contamination thresholds, and incident alert sensitivity.
+        </p>
+    </div>
+
+    <div class="dash-two-col-grid">
+        <!-- Settings Form -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-sliders" style="color: #60A5FA;"></i> Hybrid Risk Scoring Weights
+                </h3>
+            </div>
+
+            <form id="settingsForm">
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Behavioral Rule Engine Weight (0.0 - 1.0)</label>
+                    <input 
+                        type="number" 
+                        id="ruleWeightInput" 
+                        name="rule_weight" 
+                        class="form-input" 
+                        step="0.05" 
+                        min="0.0" 
+                        max="1.0" 
+                        value="{{ settings.rule_weight }}"
+                        required
+                    >
+                    <span style="font-size: 11px; color: #94A3B8;">Current: {{ (settings.rule_weight * 100)|int }}% of final composite risk index</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Isolation Forest ML Weight (0.0 - 1.0)</label>
+                    <input 
+                        type="number" 
+                        id="mlWeightInput" 
+                        name="ml_weight" 
+                        class="form-input" 
+                        step="0.05" 
+                        min="0.0" 
+                        max="1.0" 
+                        value="{{ settings.ml_weight }}"
+                        required
+                    >
+                    <span style="font-size: 11px; color: #94A3B8;">Current: {{ (settings.ml_weight * 100)|int }}% of final composite risk index</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">High Risk Score Threshold</label>
+                    <input 
+                        type="number" 
+                        id="highThreshInput" 
+                        name="high_risk_threshold" 
+                        class="form-input" 
+                        min="30" 
+                        max="90" 
+                        value="{{ settings.high_risk_threshold }}"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Critical Risk Score Threshold</label>
+                    <input 
+                        type="number" 
+                        id="critThreshInput" 
+                        name="critical_risk_threshold" 
+                        class="form-input" 
+                        min="60" 
+                        max="99" 
+                        value="{{ settings.critical_risk_threshold }}"
+                        required
+                    >
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary">
+                        Save Engine Configuration &rarr;
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Model Telemetry Info -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-cpu" style="color: #A78BFA;"></i> Machine Learning Hyperparameters
+                </h3>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 13px; color: #CBD5E1;">
+                <div style="background: #0E1833; border: 1px solid #1E2E54; border-radius: 4px; padding: 0.85rem;">
+                    <strong style="color: #60A5FA;">Algorithm:</strong> Isolation Forest (Scikit-Learn)<br>
+                    <strong>Estimators:</strong> 120 Decision Trees<br>
+                    <strong>Contamination:</strong> 8.0% expected outliers<br>
+                    <strong>Feature Vector Dim:</strong> 7 multidimensional features
+                </div>
+
+                <div style="background: #0E1833; border: 1px solid #1E2E54; border-radius: 4px; padding: 0.85rem;">
+                    <strong style="color: #34D399;">Active Feature Matrix:</strong>
+                    <ul style="margin-left: 1.25rem; margin-top: 4px; font-size: 12px; color: #94A3B8;">
+                        <li><code>amount</code> &amp; <code>avg_amount</code> (Spending delta)</li>
+                        <li><code>amount_ratio</code> (Multiplier factor)</li>
+                        <li><code>transactions_10min</code> (Velocity burst)</li>
+                        <li><code>new_device</code> (Hardware trust flag)</li>
+                        <li><code>location_change</code> (Geographic delta)</li>
+                        <li><code>time_anomaly</code> (Off-hours flag)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+        rule_weight: parseFloat(document.getElementById('ruleWeightInput').value),
+        ml_weight: parseFloat(document.getElementById('mlWeightInput').value),
+        high_risk_threshold: parseInt(document.getElementById('highThreshInput').value),
+        critical_risk_threshold: parseInt(document.getElementById('critThreshInput').value),
+        auto_alert_threshold: 60
+    };
+
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.message || 'Error updating settings', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error while saving settings.', 'danger');
+    }
+});
+</script>
+{% endblock %}

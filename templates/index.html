@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}FraudGuard AI - Detect. Analyze. Protect.{% endblock %}
+
+{% block content %}
+<!-- ================= 1. HERO SECTION (Dark Blue / Purple Gradient) ================= -->
+<section class="hero-section">
+    <div class="hero-grid">
+        <!-- Left Side: Project Messaging -->
+        <div>
+            <div class="hero-tagline-badge">
+                <i class="icon-shield" style="font-size: 13px;"></i>
+                FraudGuard AI &bull; Detect. Analyze. Protect.
+            </div>
+            
+            <h1 class="hero-headline">
+                Identify suspicious transactions before they become financial threats.
+            </h1>
+            
+            <p class="hero-description">
+                FraudGuard AI analyzes transaction behavior, detects unusual activity and provides understandable risk indicators to help investigators respond faster.
+            </p>
+            
+            <div class="hero-cta-group">
+                <a href="{{ url_for('login_view') }}" class="btn btn-primary btn-lg">
+                    Explore Dashboard &rarr;
+                </a>
+                <a href="#how-it-works" class="btn btn-dark btn-lg">
+                    See How It Works
+                </a>
+            </div>
+        </div>
+
+        <!-- Right Side: Custom Abstract Financial-Security Pipeline Visualization -->
+        <div>
+            <div class="security-visualization-panel">
+                <div class="vis-header">
+                    <span class="vis-title">Live Transaction Defense Pipeline</span>
+                    <div class="vis-status-indicator">
+                        <span class="status-dot"></span>
+                        MODEL ACTIVE (0.08 CONTAMINATION)
+                    </div>
+                </div>
+
+                <div class="flow-step-container">
+                    <!-- Step 1: Inbound Transaction -->
+                    <div class="flow-node">
+                        <div>
+                            <div class="flow-node-title">01. Inbound Transaction TX10045</div>
+                            <div class="flow-node-meta">ACC102 &bull; ₹75,000 &bull; Dubai &bull; 02:30 AM</div>
+                        </div>
+                        <span class="risk-tag medium">RAW EVENT</span>
+                    </div>
+
+                    <div class="flow-connector">&darr; Multidimensional Feature Vector</div>
+
+                    <!-- Step 2: Behavioral Profile Analysis -->
+                    <div class="flow-node analysis">
+                        <div>
+                            <div class="flow-node-title">02. Behavioral &amp; Rule Assessment</div>
+                            <div class="flow-node-meta">Amount: 21.4x Avg &bull; New Device &bull; 8 Tx / 10m</div>
+                        </div>
+                        <span class="mono" style="color: #60A5FA; font-weight: 700; font-size: 13px;">RULES: 85/100</span>
+                    </div>
+
+                    <div class="flow-connector">&darr; Isolation Forest Decision Plane</div>
+
+                    <!-- Step 3: ML Anomaly Detection -->
+                    <div class="flow-node analysis">
+                        <div>
+                            <div class="flow-node-title">03. Machine Learning Anomaly Detection</div>
+                            <div class="flow-node-meta">Scikit-Learn Vector Score: -0.32 Anomaly Margin</div>
+                        </div>
+                        <span class="mono" style="color: #A78BFA; font-weight: 700; font-size: 13px;">ML: 92/100</span>
+                    </div>
+
+                    <div class="flow-connector">&darr; Explainable AI Synthesis</div>
+
+                    <!-- Step 4: Critical Alert & Mitigation -->
+                    <div class="flow-node alert">
+                        <div>
+                            <div class="flow-node-title" style="color: #F87171;">04. High Severity Incident Flagged</div>
+                            <div class="flow-node-meta" style="color: #FECACA;">Combined Score: 94/100 [CRITICAL RISK] &bull; Alert Dispatched</div>
+                        </div>
+                        <span class="risk-tag critical">CRITICAL 94</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================= 2. INFORMATION SECTION (Light Cream / White Background) ================= -->
+<section id="how-it-works" class="info-section">
+    <div class="section-container">
+        <div class="section-header-block">
+            <span class="section-kicker">Core Capabilities</span>
+            <h2 class="section-title">Designed for Fast-Paced Financial Investigation</h2>
+            <p class="section-subtitle">
+                A purpose-built transaction monitoring architecture combining rule-based heuristics with machine learning for high-precision fraud prevention.
+            </p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-box">
+                <div class="feature-icon-wrapper">
+                    <i class="icon-zap"></i>
+                </div>
+                <h3 class="feature-heading">Dynamic Risk Calculation</h3>
+                <p class="feature-text">
+                    Evaluates 5 critical behavioral anomaly vectors: amount multipliers, new device signatures, geographic shifts, off-hours timestamps, and burst velocity.
+                </p>
+            </div>
+
+            <div class="feature-box purple-top">
+                <div class="feature-icon-wrapper">
+                    <i class="icon-cpu"></i>
+                </div>
+                <h3 class="feature-heading">Scikit-Learn Isolation Forest</h3>
+                <p class="feature-text">
+                    Unsupervised anomaly detection trained on transaction distributions to isolate anomalous data points in high-dimensional feature space without manual tagging.
+                </p>
+            </div>
+
+            <div class="feature-box teal-top">
+                <div class="feature-icon-wrapper">
+                    <i class="icon-file-text"></i>
+                </div>
+                <h3 class="feature-heading">Explainable AI Evidence</h3>
+                <p class="feature-text">
+                    Provides human-readable, numbered evidence factors (01, 02, 03) explaining exactly why a transaction was flagged, eliminating black-box opacity for compliance.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================= 3. ANALYTICS PREVIEW SECTION (Light Blue Background) ================= -->
+<section id="analytics-preview" class="analytics-section">
+    <div class="section-container">
+        <div class="section-header-block">
+            <span class="section-kicker">System Architecture</span>
+            <h2 class="section-title">Multi-Layer Fraud Evaluation Engine</h2>
+            <p class="section-subtitle">
+                Every transaction flows through our deterministic rule validator, machine learning scoring layer, and explainability synthesizer.
+            </p>
+        </div>
+
+        <div class="architecture-layout">
+            <div class="arch-panel">
+                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; color: #0F172A;">
+                    Evaluation Lifecycle
+                </h3>
+                <div class="arch-step-list">
+                    <div class="arch-step-item">
+                        <span class="arch-step-num">01</span>
+                        <div class="arch-step-content">
+                            <h4>Account Profile Baseline Comparison</h4>
+                            <p>Analyzes historical range (₹500 - ₹5,000), typical operating zones (Chennai, Coimbatore), and device IDs.</p>
+                        </div>
+                    </div>
+                    <div class="arch-step-item">
+                        <span class="arch-step-num">02</span>
+                        <div class="arch-step-content">
+                            <h4>Rule Scoring Penalties</h4>
+                            <p>Applies calibrated penalty weights (+25 amount, +20 device, +20 location, +15 time, +20 frequency).</p>
+                        </div>
+                    </div>
+                    <div class="arch-step-item">
+                        <span class="arch-step-num">03</span>
+                        <div class="arch-step-content">
+                            <h4>Isolation Forest Anomaly Scoring</h4>
+                            <p>Computes continuous isolation depth score between 0-100 indicating out-of-distribution severity.</p>
+                        </div>
+                    </div>
+                    <div class="arch-step-item">
+                        <span class="arch-step-num">04</span>
+                        <div class="arch-step-content">
+                            <h4>Incident Dispatch &amp; Graph Mapping</h4>
+                            <p>Generates actionable investigation tickets and connects coordinated accounts in the relationship network.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #FFFFFF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 2rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin-bottom: 1.25rem;">
+                    Risk Level Classification Matrix
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #ECFDF5; border-left: 4px solid #059669; border-radius: 4px;">
+                        <div>
+                            <strong style="color: #065F46; font-size: 0.9rem;">LOW RISK (0–30)</strong>
+                            <div style="font-size: 0.8rem; color: #047857;">Standard verified customer activity</div>
+                        </div>
+                        <span class="risk-tag low">NORMAL</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #FFFBEB; border-left: 4px solid #D97706; border-radius: 4px;">
+                        <div>
+                            <strong style="color: #92400E; font-size: 0.9rem;">MEDIUM RISK (31–60)</strong>
+                            <div style="font-size: 0.8rem; color: #B45309;">Minor variance in time or volume</div>
+                        </div>
+                        <span class="risk-tag medium">REVIEW</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #FFF7ED; border-left: 4px solid #EA580C; border-radius: 4px;">
+                        <div>
+                            <strong style="color: #9A3412; font-size: 0.9rem;">HIGH RISK (61–80)</strong>
+                            <div style="font-size: 0.8rem; color: #C2410C;">Multiple anomalies detected concurrently</div>
+                        </div>
+                        <span class="risk-tag high">SUSPICIOUS</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #FEF2F2; border-left: 4px solid #DC2626; border-radius: 4px;">
+                        <div>
+                            <strong style="color: #991B1B; font-size: 0.9rem;">CRITICAL RISK (81–100)</strong>
+                            <div style="font-size: 0.8rem; color: #B91C1C;">Severe multi-factor financial threat</div>
+                        </div>
+                        <span class="risk-tag critical">CRITICAL</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================= 4. SECURITY SECTION (Deep Navy Background) ================= -->
+<section id="security-arch" class="security-dark-section">
+    <div class="section-container">
+        <div class="section-header-block">
+            <span class="section-kicker" style="color: #60A5FA;">Enterprise Ready</span>
+            <h2 class="section-title">Built for Hackathon Demo &amp; Production Utility</h2>
+            <p class="section-subtitle">
+                Explore investigation workflows, simulate attacks in real-time, inspect coordinated rings, and ingest bulk batch records.
+            </p>
+        </div>
+
+        <div class="security-cards-grid">
+            <div class="sec-card">
+                <h4>Interactive Attack Simulator</h4>
+                <p>Generate simulated high-frequency and international fraud events with real-time pipeline telemetry visualization.</p>
+            </div>
+            <div class="sec-card" style="border-left-color: #A78BFA;">
+                <h4>Transaction Network Graph</h4>
+                <p>Visualize fund transfers between accounts to uncover coordinated mule rings and suspicious transaction loops.</p>
+            </div>
+            <div class="sec-card" style="border-left-color: #2DD4BF;">
+                <h4>CSV Batch Ingestion</h4>
+                <p>Upload transaction batches with automated validation, instant risk assessment, and exportable investigation CSVs.</p>
+            </div>
+            <div class="sec-card" style="border-left-color: #F87171;">
+                <h4>Incident Alerts Feed</h4>
+                <p>Actionable security feed allowing investigators to mark cases under investigation or dismiss resolved alerts.</p>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 3.5rem;">
+            <a href="{{ url_for('login_view') }}" class="btn btn-primary btn-lg">
+                Launch FraudGuard Console &rarr;
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

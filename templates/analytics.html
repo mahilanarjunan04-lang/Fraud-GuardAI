@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Fraud Analytics & Intelligence - FraudGuard AI{% endblock %}
+
+{% block content %}
+<div class="app-main-content">
+
+    <div style="margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1 style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
+                Fraud Analytics &amp; Threat Intelligence
+            </h1>
+            <p style="font-size: 0.88rem; color: #94A3B8; margin-top: 0.2rem;">
+                Aggregated multidimensional anomaly patterns across timeline, geography, velocity, and transaction values.
+            </p>
+        </div>
+    </div>
+
+    <!-- 1. Top Two Large Charts -->
+    <div class="dash-two-col-equal">
+        <!-- Fraud Trend Over Time -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-trending-up" style="color: #EA580C;"></i> Fraud Trend (8-Week Velocity)
+                </h3>
+                <span class="mono" style="font-size: 12px; color: #94A3B8;">Incident Mitigation</span>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="fraudTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Fraud by Location Horizontal Bar -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-map-pin" style="color: #3B82F6;"></i> Suspicious Activity by Location
+                </h3>
+                <span class="mono" style="font-size: 12px; color: #94A3B8;">Geographic Threat Heatmap</span>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="locationFraudChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Middle Two Charts -->
+    <div class="dash-two-col-equal">
+        <!-- Fraud by Hour of Day -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-clock" style="color: #A78BFA;"></i> Anomaly Distribution by Hour Window
+                </h3>
+                <span class="mono" style="font-size: 12px; color: #94A3B8;">Off-Hours Spike Analysis</span>
+            </div>
+            <div style="height: 230px;">
+                <canvas id="hourlyFraudChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Amount Range Distribution -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-dollar-sign" style="color: #2DD4BF;"></i> Flagged Transaction Amount Tiers
+                </h3>
+                <span class="mono" style="font-size: 12px; color: #94A3B8;">Ticket Size Anomaly</span>
+            </div>
+            <div style="height: 230px;">
+                <canvas id="amountDistChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Geographic Regional Matrix Section -->
+    <div class="panel-card">
+        <div class="panel-header">
+            <div>
+                <h3 class="panel-title">
+                    <i class="icon-globe" style="color: #60A5FA;"></i> Regional Security Threat Matrix
+                </h3>
+                <p style="font-size: 12px; color: #94A3B8; margin-top: 2px;">
+                    Detailed regional surveillance across domestic corridors and international gateways.
+                </p>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem;">
+            <div class="sec-card" style="border-left-color: #DC2626;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="font-size: 1.1rem; color: #FFF;">Dubai Gateway</h4>
+                    <span class="risk-tag critical">CRITICAL RISK</span>
+                </div>
+                <div style="font-size: 13px; color: #CBD5E1;">
+                    Suspicious Ratio: <strong style="color: #F87171;">78.5%</strong><br>
+                    Dominant Threat: Cross-border high-amount burst velocity
+                </div>
+            </div>
+
+            <div class="sec-card" style="border-left-color: #EA580C;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="font-size: 1.1rem; color: #FFF;">Delhi NCR</h4>
+                    <span class="risk-tag high">HIGH RISK</span>
+                </div>
+                <div style="font-size: 13px; color: #CBD5E1;">
+                    Suspicious Ratio: <strong style="color: #FB923C;">42.1%</strong><br>
+                    Dominant Threat: Unregistered device hardware spoofing
+                </div>
+            </div>
+
+            <div class="sec-card" style="border-left-color: #059669;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="font-size: 1.1rem; color: #FFF;">Chennai Hub</h4>
+                    <span class="risk-tag low">LOW RISK</span>
+                </div>
+                <div style="font-size: 13px; color: #CBD5E1;">
+                    Suspicious Ratio: <strong style="color: #6EE7B7;">2.4%</strong><br>
+                    Dominant Threat: Baseline merchant activity
+                </div>
+            </div>
+
+            <div class="sec-card" style="border-left-color: #059669;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="font-size: 1.1rem; color: #FFF;">Coimbatore &amp; Erode</h4>
+                    <span class="risk-tag low">LOW RISK</span>
+                </div>
+                <div style="font-size: 13px; color: #CBD5E1;">
+                    Suspicious Ratio: <strong style="color: #6EE7B7;">3.1%</strong><br>
+                    Dominant Threat: Normal verified consumer transactions
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

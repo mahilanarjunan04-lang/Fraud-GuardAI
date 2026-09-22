@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Account {{ account.account_id }} Profile - FraudGuard AI{% endblock %}
+
+{% block content %}
+<div class="app-main-content">
+
+    <div style="margin-bottom: 1.25rem;">
+        <a href="{{ url_for('accounts_view') }}" style="font-size: 13px; color: #34D399; text-decoration: none;">
+            &larr; Back to Accounts Directory
+        </a>
+    </div>
+
+    <!-- Blocked Account Alert Banner if Account is Blocked -->
+    {% if account.status == 'BLOCKED' %}
+    <div id="accountBlockedBanner" style="background: rgba(220, 38, 38, 0.2); border: 1px solid #DC2626; border-left: 4px solid #DC2626; border-radius: 4px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <div style="font-weight: 800; color: #F87171; font-size: 0.95rem;">
+                🚨 ACCOUNT {{ account.account_id }} IS CURRENTLY BLOCKED &amp; FROZEN
+            </div>
+            <div style="font-size: 12px; color: #FECACA; margin-top: 2px;">
+                Reason: {{ account.block_reason if account.block_reason else 'High risk fraud incident detected' }}
+            </div>
+        </div>
+        <button id="btnUnblockAccount" class="btn btn-green btn-sm" data-account-id="{{ account.account_id }}">
+            <i class="icon-unlock"></i> Unblock Account
+        </button>
+    </div>
+    {% else %}
+    <div id="accountBlockedBanner" style="display: none; background: rgba(220, 38, 38, 0.2); border: 1px solid #DC2626; border-left: 4px solid #DC2626; border-radius: 4px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 800; color: #F87171; font-size: 0.95rem;">
+            🚨 ACCOUNT IS BLOCKED: All card and transfer capabilities are frozen.
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Account Overview Header Panel -->
+    <div class="dashboard-hero-panel" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem;">
+                    <span class="mono" style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF;">
+                        {{ account.account_id }}
+                    </span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: #E2E8F0;">
+                        &bull; {{ account.holder_name }}
+                    </span>
+                    <span id="accountStatusBadge" class="risk-tag {% if account.status == 'BLOCKED' %}blocked{% elif account.risk_score >= 81 %}critical{% elif account.risk_score >= 61 %}high{% elif account.risk_score >= 31 %}medium{% else %}low{% endif %}">
+                        {{ account.status }}
+                    </span>
+                </div>
+                <p style="font-size: 0.9rem; color: #94A3B8;">
+                    Contact: <strong>{{ account.phone_number }}</strong> &bull; Email: <strong>{{ account.email }}</strong>
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                <button class="btn btn-green btn-call-customer" data-account-id="{{ account.account_id }}" data-tx-id="PROFILE_VERIFY" data-amount="0" data-location="Profile Check">
+                    <i class="icon-phone"></i> Call Cardholder
+                </button>
+                <button class="btn btn-primary btn-send-message" data-account-id="{{ account.account_id }}" data-tx-id="PROFILE_ALERT" data-amount="0" data-location="Security Check">
+                    <i class="icon-message-square"></i> Send SMS
+                </button>
+
+                {% if account.status != 'BLOCKED' %}
+                <button id="btnBlockAccount" class="btn btn-danger" data-account-id="{{ account.account_id }}">
+                    <i class="icon-lock"></i> Block Account
+                </button>
+                {% else %}
+                <button id="btnUnblockAccount" class="btn btn-green" data-account-id="{{ account.account_id }}">
+                    <i class="icon-unlock"></i> Unblock Account
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 5 Key Metrics for Account -->
+        <div class="metrics-overview-grid" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #1A3464;">
+            <div class="metric-rect-block {% if account.risk_score >= 61 or account.status == 'BLOCKED' %}danger{% else %}teal{% endif %}">
+                <div class="metric-label">Account Threat Level</div>
+                <div class="metric-value">{{ account.risk_score }} / 100</div>
+                <div class="metric-subtext">Composite Anomaly Score</div>
+            </div>
+
+            <div class="metric-rect-block">
+                <div class="metric-label">Total Transactions</div>
+                <div class="metric-value">{{ transactions|length }}</div>
+                <div class="metric-subtext">Recorded Ledger Events</div>
+            </div>
+
+            <div class="metric-rect-block orange">
+                <div class="metric-label">Suspicious Activity</div>
+                <div class="metric-value">{{ suspicious_count }}</div>
+                <div class="metric-subtext">High/Critical Flags</div>
+            </div>
+
+            <div class="metric-rect-block">
+                <div class="metric-label">Baseline Average</div>
+                <div class="metric-value">₹{{ "{:,.0f}".format(account.avg_amount) }}</div>
+                <div class="metric-subtext">Expected Spending</div>
+            </div>
+
+            <div class="metric-rect-block blue">
+                <div class="metric-label">Known Devices</div>
+                <div class="metric-value">{{ account.known_devices }}</div>
+                <div class="metric-subtext">Trusted Fingerprints</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Behavior Profile Comparison Panel -->
+    <div class="dash-two-col-grid">
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-user-check" style="color: #34D399;"></i> Verified Behavioral Baseline
+                </h3>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem; font-size: 13px;">
+                <div style="background: #08142A; border: 1px solid #162C54; border-left: 3px solid #10B981; padding: 0.85rem 1rem; border-radius: 4px;">
+                    <div style="color: #94A3B8; font-weight: 600;">Typical Transaction Range:</div>
+                    <div class="mono" style="font-size: 1.1rem; font-weight: 700; color: #FFF; margin-top: 2px;">
+                        ₹{{ "{:,.0f}".format(account.min_amount) }} – ₹{{ "{:,.0f}".format(account.max_amount) }}
+                    </div>
+                </div>
+
+                <div style="background: #08142A; border: 1px solid #162C54; border-left: 3px solid #38BDF8; padding: 0.85rem 1rem; border-radius: 4px;">
+                    <div style="color: #94A3B8; font-weight: 600;">Authorized Operating Regions:</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #FFF; margin-top: 2px;">
+                        {{ account.normal_locations }}
+                    </div>
+                </div>
+
+                <div style="background: #08142A; border: 1px solid #162C54; border-left: 3px solid #F59E0B; padding: 0.85rem 1rem; border-radius: 4px;">
+                    <div style="color: #94A3B8; font-weight: 600;">Standard Operating Hours:</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #FFF; margin-top: 2px;">
+                        {{ account.normal_hours }}
+                    </div>
+                </div>
+
+                <div style="background: #08142A; border: 1px solid #162C54; border-left: 3px solid #0D9488; padding: 0.85rem 1rem; border-radius: 4px;">
+                    <div style="color: #94A3B8; font-weight: 600;">Average Daily Transaction Velocity:</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #FFF; margin-top: 2px;">
+                        ~{{ account.avg_daily_tx }} transactions / day
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Communication History -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="icon-phone" style="color: #34D399;"></i> Communication &amp; Verification Audit
+                </h3>
+            </div>
+
+            <div style="font-size: 12px; max-height: 280px; overflow-y: auto;">
+                {% for comm in communications %}
+                <div style="padding: 0.75rem 0; border-bottom: 1px solid #162C54;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <strong style="color: #34D399;">{{ comm.type }} &bull; {{ comm.status }}</strong>
+                        <span style="color: #64748B;">{{ comm.created_at }}</span>
+                    </div>
+                    <div style="color: #CBD5E1;">{{ comm.message_content }}</div>
+                    {% if comm.response %}
+                    <div style="font-size: 11px; color: #94A3B8; margin-top: 2px;">Result: <strong style="color: #FFF;">{{ comm.response }}</strong></div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="color: #94A3B8; padding: 1rem 0; text-align: center;">
+                    No communications logged yet. Click "Call Cardholder" or "Send SMS" above to initiate verification.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Transaction Ledger -->
+    <div class="panel-card">
+        <div class="panel-header">
+            <h3 class="panel-title">
+                <i class="icon-list" style="color: #34D399;"></i> Transaction Activity History
+            </h3>
+            <span class="mono" style="font-size: 12px; color: #94A3B8;">{{ transactions|length }} Records</span>
+        </div>
+
+        <div class="table-responsive-container">
+            <table class="fraud-table">
+                <thead>
+                    <tr>
+                        <th>Tx ID</th>
+                        <th>Amount</th>
+                        <th>Location</th>
+                        <th>Device</th>
+                        <th>Time</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr class="risk-{{ tx.risk_level.lower() }}">
+                        <td class="mono" style="font-weight: 700; color: #34D399;">{{ tx.transaction_id }}</td>
+                        <td class="mono" style="font-weight: 700;">₹{{ "{:,.2f}".format(tx.amount) }}</td>
+                        <td>{{ tx.location }}</td>
+                        <td style="font-size: 12px; color: #94A3B8;">{{ tx.device }}</td>
+                        <td>{{ tx.time_str }}</td>
+                        <td class="mono" style="font-weight: 700;">{{ tx.risk_score }}</td>
+                        <td><span class="risk-tag {{ tx.risk_level.lower() }}">{{ tx.risk_level }}</span></td>
+                        <td>{{ tx.status }}</td>
+                        <td>
+                            <a href="{{ url_for('transaction_details_view', tx_id=tx.transaction_id) }}" class="btn btn-secondary btn-sm">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Call Modal -->
+<div class="modal-backdrop" id="customerCallModal">
+    <div class="sim-modal-card" style="max-width: 540px; text-align: center;">
+        <div class="modal-header">
+            <h3 style="font-size: 1.15rem;">Automated Voice Security Call</h3>
+            <button class="modal-close-btn" id="closeCallModal">&times;</button>
+        </div>
+
+        <div class="call-pulse-ring">
+            <i class="icon-phone"></i>
+        </div>
+
+        <div id="callStatusText" style="font-size: 14px; color: #CBD5E1; margin-bottom: 1rem;">
+            Connecting to customer phone...
+        </div>
+
+        <div id="callTranscriptBox" style="display: none; background: #0E1F3D; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; text-align: left; margin-bottom: 1.25rem;">
+            <div style="font-size: 11px; font-weight: 700; color: #34D399; margin-bottom: 4px; text-transform: uppercase;">
+                AI Voice Security Officer (Live Script):
+            </div>
+            <p id="callTranscriptText" style="font-size: 13px; color: #FFFFFF; line-height: 1.5;"></p>
+        </div>
+
+        <div id="callActionsGroup" style="display: none; flex-direction: column; gap: 0.75rem;">
+            <div style="font-size: 12px; color: #94A3B8; font-weight: 600;">
+                SIMULATE CUSTOMER RESPONSE (Interactive Hackathon Demo):
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button id="callConfirmFraudBtn" class="btn btn-danger" style="flex: 1;">
+                    <i class="icon-shield-x"></i> [2] "No, FRAUD!" &rarr; BLOCK
+                </button>
+                <button id="callConfirmSafeBtn" class="btn btn-green" style="flex: 1;">
+                    <i class="icon-shield-check"></i> [1] "Yes, I authorized this."
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
