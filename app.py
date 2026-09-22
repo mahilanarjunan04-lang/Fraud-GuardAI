@@ -21,6 +21,7 @@ from database import (
 )
 from fraud_detection import analyze_transaction
 from ml_model import get_or_load_model
+from telephony import send_real_sms, make_real_call, send_real_otp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fraudguard-ai-hackathon-2026-secret-key-3f1b0989')
@@ -334,18 +335,22 @@ def api_call_workflow_step(account_id):
                 f"Automated Call Attempt #1 to {phone} for ₹{amount} transaction in {location} was UNATTENDED / MISSED.",
                 status='NOT_ATTENDED', response='RETRY_CALL_REQUIRED'
             )
+            # Try placing real retry call attempt
+            call_res = make_real_call(phone, transaction_details={'amount': amount, 'location': location, 'tx_id': tx_id})
             return jsonify({
                 'success': True,
                 'next_step': 'RETRY_CALL',
                 'attempt': 2,
+                'telephony': call_res,
                 'message': f"Call Attempt #1 to {phone} was unattended. Initiating Automated Retry Call (Attempt #2)..."
             })
         else: # step == 2
-            # Trigger SMS Fallback Message to Customer
+            # Trigger real SMS Fallback Message to Customer
             sms_prompt = (
                 f"🔴 Bank Security Alert: A transaction of ₹{amount} at {location} was requested on Account {account_id}. "
                 f"Was this transaction done by you? Reply [1: DONE BY ME] or [2: NOT DONE BY ME / FRAUD]."
             )
+            sms_res = send_real_sms(phone, sms_prompt)
             log_customer_communication(
                 account_id, tx_id, 'SMS_ALERT', phone,
                 sms_prompt,
@@ -356,6 +361,7 @@ def api_call_workflow_step(account_id):
                 'next_step': 'SMS_DECISION',
                 'phone': phone,
                 'sms_text': sms_prompt,
+                'telephony': sms_res,
                 'message': f"📱 Call Attempt #2 missed. Dispatched urgent SMS verification to {phone}: 'Was this transaction done by you or others?'"
             })
     else: # outcome == 'ATTENDED'
@@ -454,9 +460,14 @@ def api_send_customer_message(account_id):
     
     msg = f"📱 FraudGuard Notification: Unusual transaction of ₹{amount} detected from {location} on account {account_id}. Security call incoming. If unauthorized, reply 'HOLD'."
     
+    sms_res = send_real_sms(phone, msg)
     log_customer_communication(account_id, tx_id, 'SMS_NOTIFICATION', phone, msg, 'DELIVERED', 'Notification sent')
     
-    return jsonify({'success': True, 'message': f'📱 User Notification SMS sent to {phone}. Customer notified.'})
+    return jsonify({
+        'success': True,
+        'telephony': sms_res,
+        'message': f'📱 User Notification SMS sent to {phone}. Customer notified.'
+    })
 
 @app.route('/api/accounts/<account_id>/call', methods=['POST'])
 def api_call_customer(account_id):
@@ -466,9 +477,10 @@ def api_call_customer(account_id):
     location = data.get('location', 'Dubai')
 
     acc = get_account_profile(account_id)
-    phone = acc['phone_number'] if acc else '+91 98450 12345'
+    phone = acc['phone_number'] if acc else '+91 8148534339'
     name = acc['holder_name'] if acc else 'Valued Customer'
 
+    call_res = make_real_call(phone, transaction_details={'amount': amount, 'location': location, 'tx_id': tx_id})
     call_script = f"Hello {name}, this is the FraudGuard AI security desk. We detected an unusual transaction of ₹{amount} from {location}. Did you authorize this transaction?"
 
     return jsonify({
@@ -477,8 +489,39 @@ def api_call_customer(account_id):
         'customer_name': name,
         'phone': phone,
         'script': call_script,
-        'tx_id': tx_id
+        'tx_id': tx_id,
+        'telephony': call_res
     })
+
+# ==========================================================
+# REST API: DIRECT TELEPHONY TESTING ENDPOINTS
+# ==========================================================
+
+@app.route('/api/telephony/test-call', methods=['POST'])
+def api_test_call():
+    """
+    1-click test button to place a real outbound call to the target phone.
+    """
+    data = request.get_json() or {}
+    target_phone = data.get('phone', '+918148534339')
+    tx_info = {
+        'amount': '85,000',
+        'location': 'Dubai',
+        'tx_id': 'TEST-CALL-01'
+    }
+    result = make_real_call(target_phone, transaction_details=tx_info)
+    return jsonify(result)
+
+@app.route('/api/telephony/test-sms', methods=['POST'])
+def api_test_sms():
+    """
+    1-click test button to send a real SMS to the target phone.
+    """
+    data = request.get_json() or {}
+    target_phone = data.get('phone', '+918148534339')
+    msg = f"🔔 FraudGuard AI Test Alert: Real-time Telephony Gateway is connected! Ready to defend account ACC101 against fraudulent transactions."
+    result = send_real_sms(target_phone, msg)
+    return jsonify(result)
 
 @app.route('/api/simulate', methods=['POST'])
 def api_simulate():
@@ -891,9 +934,20 @@ def api_save_settings():
         high_thresh = int(data.get('high_risk_threshold', 61))
         crit_thresh = int(data.get('critical_risk_threshold', 81))
         auto_block = int(data.get('auto_block_threshold', 81))
+        tx_limit = float(data.get('transaction_limit', 80000.0))
+        twilio_sid = str(data.get('twilio_account_sid', '')).strip()
+        twilio_token = str(data.get('twilio_auth_token', '')).strip()
+        twilio_phone = str(data.get('twilio_from_phone', '')).strip()
+        target_phone = str(data.get('default_recipient_phone', '+918148534339')).strip()
+        enabled = 1 if data.get('telephony_enabled') in [1, True, '1', 'true', 'on'] else 0
 
-        update_system_settings(rule_w, ml_w, alert_thresh, high_thresh, crit_thresh, auto_block)
-        return jsonify({'success': True, 'message': 'System engine parameters updated successfully.'})
+        update_system_settings(
+            rule_weight=rule_w, ml_weight=ml_w, auto_alert_threshold=alert_thresh,
+            high_threshold=high_thresh, crit_threshold=crit_thresh, auto_block=auto_block,
+            transaction_limit=tx_limit, twilio_sid=twilio_sid, twilio_token=twilio_token,
+            twilio_phone=twilio_phone, target_phone=target_phone, enabled=enabled
+        )
+        return jsonify({'success': True, 'message': 'System engine parameters & Telephony Gateway settings updated successfully.'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
 

@@ -132,7 +132,7 @@ def init_db():
         )
     ''')
 
-    # System settings table (includes transaction limit 80000)
+    # System settings table (includes transaction limit 80000 and Twilio telephony configuration)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS system_settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,15 +145,29 @@ def init_db():
             critical_risk_threshold INTEGER DEFAULT 81,
             isolation_contamination REAL DEFAULT 0.08,
             max_call_attempts INTEGER DEFAULT 2,
+            twilio_account_sid TEXT DEFAULT '',
+            twilio_auth_token TEXT DEFAULT '',
+            twilio_from_phone TEXT DEFAULT '',
+            default_recipient_phone TEXT DEFAULT '+918148534339',
+            telephony_enabled INTEGER DEFAULT 1,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
-    # Ensure transaction_limit column exists
-    try:
-        cursor.execute("SELECT transaction_limit FROM system_settings LIMIT 1")
-    except sqlite3.OperationalError:
-        cursor.execute("ALTER TABLE system_settings ADD COLUMN transaction_limit REAL DEFAULT 80000.0")
+    # Ensure all columns exist dynamically for backward compatibility
+    columns_to_add = [
+        ("transaction_limit", "REAL DEFAULT 80000.0"),
+        ("twilio_account_sid", "TEXT DEFAULT ''"),
+        ("twilio_auth_token", "TEXT DEFAULT ''"),
+        ("twilio_from_phone", "TEXT DEFAULT ''"),
+        ("default_recipient_phone", "TEXT DEFAULT '+918148534339'"),
+        ("telephony_enabled", "INTEGER DEFAULT 1")
+    ]
+    for col, definition in columns_to_add:
+        try:
+            cursor.execute(f"SELECT {col} FROM system_settings LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute(f"ALTER TABLE system_settings ADD COLUMN {col} {definition}")
 
     conn.commit()
     conn.close()
@@ -240,6 +254,13 @@ def generate_otp(identifier):
     conn.commit()
     conn.close()
     
+    # Try sending real SMS OTP via Telephony Gateway
+    try:
+        from telephony import send_real_otp
+        send_real_otp(phone, otp_code)
+    except Exception as e:
+        print(f">>> [OTP SEND ERROR] {e}")
+
     # Log communication
     log_customer_communication(
         account_id=account_id,
@@ -526,18 +547,21 @@ def get_system_settings():
     conn = get_db_connection()
     row = conn.execute('SELECT * FROM system_settings ORDER BY id DESC LIMIT 1').fetchone()
     if not row:
-        conn.execute('INSERT INTO system_settings (rule_weight, ml_weight, transaction_limit, auto_block_threshold) VALUES (0.6, 0.4, 80000.0, 81)')
+        conn.execute('INSERT INTO system_settings (rule_weight, ml_weight, transaction_limit, auto_block_threshold, default_recipient_phone) VALUES (0.6, 0.4, 80000.0, 81, "+918148534339")')
         conn.commit()
         row = conn.execute('SELECT * FROM system_settings ORDER BY id DESC LIMIT 1').fetchone()
     conn.close()
     return dict(row)
 
-def update_system_settings(rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block=81, transaction_limit=80000.0):
+def update_system_settings(rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block=81, transaction_limit=80000.0, twilio_sid='', twilio_token='', twilio_phone='', target_phone='+918148534339', enabled=1):
     conn = get_db_connection()
     conn.execute('''
         UPDATE system_settings 
-        SET rule_weight = ?, ml_weight = ?, auto_alert_threshold = ?, high_risk_threshold = ?, critical_risk_threshold = ?, auto_block_threshold = ?, transaction_limit = ?, updated_at = CURRENT_TIMESTAMP
+        SET rule_weight = ?, ml_weight = ?, auto_alert_threshold = ?, high_risk_threshold = ?, 
+            critical_risk_threshold = ?, auto_block_threshold = ?, transaction_limit = ?,
+            twilio_account_sid = ?, twilio_auth_token = ?, twilio_from_phone = ?,
+            default_recipient_phone = ?, telephony_enabled = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = 1
-    ''', (rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block, transaction_limit))
+    ''', (rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block, transaction_limit, twilio_sid, twilio_token, twilio_phone, target_phone, enabled))
     conn.commit()
     conn.close()

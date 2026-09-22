@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Engine Configuration - FraudGuard AI{% endblock %}
+{% block title %}Engine & Telephony Configuration - FraudGuard AI{% endblock %}
 
 {% block content %}
 <div class="app-main-content">
 
     <div style="margin-bottom: 1.75rem;">
         <h1 style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
-            Detection Engine Configuration
+            Detection Engine & Telephony Configuration
         </h1>
         <p style="font-size: 0.88rem; color: #94A3B8; margin-top: 0.2rem;">
-            Calibrate rule weighting, Isolation Forest contamination thresholds, and incident alert sensitivity.
+            Calibrate rule weighting, ₹80,000 transaction limits, and configure real outbound voice calls & SMS delivery.
         </p>
     </div>
 
@@ -19,11 +19,26 @@
         <div class="panel-card">
             <div class="panel-header">
                 <h3 class="panel-title">
-                    <i class="icon-sliders" style="color: #60A5FA;"></i> Hybrid Risk Scoring Weights
+                    <i class="icon-sliders" style="color: #60A5FA;"></i> Hybrid Risk Scoring & Limits
                 </h3>
             </div>
 
             <form id="settingsForm">
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Single Transaction Security Ceiling (₹)</label>
+                    <input 
+                        type="number" 
+                        id="txLimitInput" 
+                        name="transaction_limit" 
+                        class="form-input" 
+                        min="1000" 
+                        step="5000"
+                        value="{{ settings.transaction_limit if settings.transaction_limit else 80000.0 }}"
+                        required
+                    >
+                    <span style="font-size: 11px; color: #34D399; font-weight: 600;">Enforced limit: Single transactions exceeding ₹80,000 trigger Critical Alert & 2x Calls</span>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label" style="color: #CBD5E1;">Behavioral Rule Engine Weight (0.0 - 1.0)</label>
                     <input 
@@ -92,34 +107,88 @@
             </form>
         </div>
 
-        <!-- Model Telemetry Info -->
-        <div class="panel-card">
+        <!-- Real Telephony Gateway Panel -->
+        <div class="panel-card" style="border-left: 4px solid #10B981;">
             <div class="panel-header">
-                <h3 class="panel-title">
-                    <i class="icon-cpu" style="color: #A78BFA;"></i> Machine Learning Hyperparameters
-                </h3>
+                <div>
+                    <h3 class="panel-title" style="color: #34D399;">
+                        <i class="icon-phone-call"></i> Real Telephony Gateway (Live Calls & SMS)
+                    </h3>
+                    <p style="font-size: 12px; color: #94A3B8; margin-top: 2px;">
+                        Connect Twilio API to ring physical phones & deliver real SMS to <strong style="color: #60A5FA;">+91 8148534339</strong>.
+                    </p>
+                </div>
+                <span class="risk-tag low">TWILIO READY</span>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 13px; color: #CBD5E1;">
-                <div style="background: #0E1833; border: 1px solid #1E2E54; border-radius: 4px; padding: 0.85rem;">
-                    <strong style="color: #60A5FA;">Algorithm:</strong> Isolation Forest (Scikit-Learn)<br>
-                    <strong>Estimators:</strong> 120 Decision Trees<br>
-                    <strong>Contamination:</strong> 8.0% expected outliers<br>
-                    <strong>Feature Vector Dim:</strong> 7 multidimensional features
+            <form id="telephonyForm" style="margin-top: 0.5rem;">
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Default Target Phone Number</label>
+                    <input 
+                        type="text" 
+                        id="targetPhoneInput" 
+                        class="form-input mono" 
+                        value="{{ settings.default_recipient_phone if settings.default_recipient_phone else '+918148534339' }}"
+                        placeholder="+918148534339"
+                        required
+                    >
+                    <span style="font-size: 11px; color: #94A3B8;">Primary mobile number dialed during automated security escalations</span>
                 </div>
 
-                <div style="background: #0E1833; border: 1px solid #1E2E54; border-radius: 4px; padding: 0.85rem;">
-                    <strong style="color: #34D399;">Active Feature Matrix:</strong>
-                    <ul style="margin-left: 1.25rem; margin-top: 4px; font-size: 12px; color: #94A3B8;">
-                        <li><code>amount</code> &amp; <code>avg_amount</code> (Spending delta)</li>
-                        <li><code>amount_ratio</code> (Multiplier factor)</li>
-                        <li><code>transactions_10min</code> (Velocity burst)</li>
-                        <li><code>new_device</code> (Hardware trust flag)</li>
-                        <li><code>location_change</code> (Geographic delta)</li>
-                        <li><code>time_anomaly</code> (Off-hours flag)</li>
-                    </ul>
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Twilio Account SID (Optional for Live Mode)</label>
+                    <input 
+                        type="text" 
+                        id="twilioSidInput" 
+                        class="form-input mono" 
+                        value="{{ settings.twilio_account_sid if settings.twilio_account_sid else '' }}"
+                        placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    >
                 </div>
-            </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Twilio Auth Token</label>
+                    <input 
+                        type="password" 
+                        id="twilioTokenInput" 
+                        class="form-input mono" 
+                        value="{{ settings.twilio_auth_token if settings.twilio_auth_token else '' }}"
+                        placeholder="Your Twilio Auth Token"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="color: #CBD5E1;">Twilio Virtual Phone Number</label>
+                    <input 
+                        type="text" 
+                        id="twilioPhoneInput" 
+                        class="form-input mono" 
+                        value="{{ settings.twilio_from_phone if settings.twilio_from_phone else '' }}"
+                        placeholder="+1xxxxxxxxxx"
+                    >
+                </div>
+
+                <!-- 1-Click Direct Telephony Test Triggers -->
+                <div style="background: #08142A; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; margin-top: 1rem;">
+                    <div style="font-size: 11px; font-weight: 700; color: #FCD34D; text-transform: uppercase; margin-bottom: 0.5rem;">
+                        ⚡ Live Telephony Verification Buttons
+                    </div>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button type="button" id="btnTestRealCall" class="btn btn-green btn-sm" style="flex: 1;">
+                            <i class="icon-phone"></i> 📞 Test Call My Phone
+                        </button>
+                        <button type="button" id="btnTestRealSms" class="btn btn-primary btn-sm" style="flex: 1;">
+                            <i class="icon-message-square"></i> 📱 Test SMS My Phone
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 1.25rem;">
+                    <button type="button" id="btnSaveTelephony" class="btn btn-green">
+                        Save Telephony Settings &rarr;
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -128,31 +197,130 @@
 
 {% block scripts %}
 <script>
-document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const payload = {
-        rule_weight: parseFloat(document.getElementById('ruleWeightInput').value),
-        ml_weight: parseFloat(document.getElementById('mlWeightInput').value),
-        high_risk_threshold: parseInt(document.getElementById('highThreshInput').value),
-        critical_risk_threshold: parseInt(document.getElementById('critThreshInput').value),
-        auto_alert_threshold: 60
-    };
+document.addEventListener('DOMContentLoaded', () => {
+    const settingsForm = document.getElementById('settingsForm');
+    const btnSaveTelephony = document.getElementById('btnSaveTelephony');
+    const btnTestRealCall = document.getElementById('btnTestRealCall');
+    const btnTestRealSms = document.getElementById('btnTestRealSms');
 
-    try {
-        const res = await fetch('/api/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.success) {
-            showToast(data.message, 'success');
-        } else {
-            showToast(data.message || 'Error updating settings', 'danger');
+    // Save Engine Settings
+    settingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            rule_weight: parseFloat(document.getElementById('ruleWeightInput').value),
+            ml_weight: parseFloat(document.getElementById('mlWeightInput').value),
+            transaction_limit: parseFloat(document.getElementById('txLimitInput').value),
+            high_risk_threshold: parseInt(document.getElementById('highThreshInput').value),
+            critical_risk_threshold: parseInt(document.getElementById('critThreshInput').value),
+            auto_alert_threshold: 60,
+            twilio_account_sid: document.getElementById('twilioSidInput').value.trim(),
+            twilio_auth_token: document.getElementById('twilioTokenInput').value.trim(),
+            twilio_from_phone: document.getElementById('twilioPhoneInput').value.trim(),
+            default_recipient_phone: document.getElementById('targetPhoneInput').value.trim(),
+            telephony_enabled: 1
+        };
+
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message || 'Error updating settings', 'danger');
+            }
+        } catch (err) {
+            showToast('Network error while saving settings.', 'danger');
         }
-    } catch (err) {
-        showToast('Network error while saving settings.', 'danger');
-    }
+    });
+
+    // Save Telephony Settings button
+    btnSaveTelephony.addEventListener('click', async () => {
+        const payload = {
+            rule_weight: parseFloat(document.getElementById('ruleWeightInput').value),
+            ml_weight: parseFloat(document.getElementById('mlWeightInput').value),
+            transaction_limit: parseFloat(document.getElementById('txLimitInput').value),
+            high_risk_threshold: parseInt(document.getElementById('highThreshInput').value),
+            critical_risk_threshold: parseInt(document.getElementById('critThreshInput').value),
+            auto_alert_threshold: 60,
+            twilio_account_sid: document.getElementById('twilioSidInput').value.trim(),
+            twilio_auth_token: document.getElementById('twilioTokenInput').value.trim(),
+            twilio_from_phone: document.getElementById('twilioPhoneInput').value.trim(),
+            default_recipient_phone: document.getElementById('targetPhoneInput').value.trim(),
+            telephony_enabled: 1
+        };
+
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`✅ ${data.message}`, 'success');
+            } else {
+                showToast(data.message || 'Error saving telephony configuration', 'danger');
+            }
+        } catch (err) {
+            showToast('Network error while saving telephony settings.', 'danger');
+        }
+    });
+
+    // 1-Click Test Real Call
+    btnTestRealCall.addEventListener('click', async () => {
+        const phone = document.getElementById('targetPhoneInput').value.trim() || '+918148534339';
+        btnTestRealCall.disabled = true;
+        btnTestRealCall.innerHTML = 'Dialing...';
+
+        try {
+            const res = await fetch('/api/telephony/test-call', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message || data.error || 'Failed to initiate call', 'danger');
+            }
+        } catch (err) {
+            showToast('Error calling test phone', 'danger');
+        } finally {
+            btnTestRealCall.disabled = false;
+            btnTestRealCall.innerHTML = '<i class="icon-phone"></i> 📞 Test Call My Phone';
+        }
+    });
+
+    // 1-Click Test Real SMS
+    btnTestRealSms.addEventListener('click', async () => {
+        const phone = document.getElementById('targetPhoneInput').value.trim() || '+918148534339';
+        btnTestRealSms.disabled = true;
+        btnTestRealSms.innerHTML = 'Sending...';
+
+        try {
+            const res = await fetch('/api/telephony/test-sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message || data.error || 'Failed to send SMS', 'danger');
+            }
+        } catch (err) {
+            showToast('Error sending test SMS', 'danger');
+        } finally {
+            btnTestRealSms.disabled = false;
+            btnTestRealSms.innerHTML = '<i class="icon-message-square"></i> 📱 Test SMS My Phone';
+        }
+    });
 });
 </script>
 {% endblock %}
