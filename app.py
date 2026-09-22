@@ -611,18 +611,20 @@ def api_simulate():
     conn.close()
 
     if analysis['risk_level'] in ['HIGH', 'CRITICAL']:
-        # Auto-send SMS notification
+        # Auto-send real cellular SMS notification via Twilio
+        recip_phone = selected_acc.get('phone_number', '+918148534339')
+        sms_msg = f"FraudGuard Alert: High-risk ₹{amount:,.0f} transaction in {location} on account {selected_acc['account_id']}. Verification call incoming."
+        send_real_sms(recip_phone, sms_msg)
         log_customer_communication(
-            selected_acc['account_id'], tx_id, 'SMS_NOTIFICATION', selected_acc.get('phone_number', '+91 98450 12345'),
-            f"📱 High Risk Alert: ₹{amount:,.0f} detected from {location}. Verification call initiating.",
-            status='DELIVERED', response='Automated Notification'
+            selected_acc['account_id'], tx_id, 'SMS_NOTIFICATION', recip_phone,
+            sms_msg, status='DELIVERED', response='Automated Notification'
         )
 
     steps = [
         { 'step': 1, 'title': 'Transaction Ingested', 'detail': f"{tx_id} ({selected_acc['account_id']}): ₹{amount:,.2f} at {location}." },
         { 'step': 2, 'title': 'AI Detects HIGH/CRITICAL RISK', 'detail': f"Composite Score: {analysis['risk_score']}/100 [{analysis['risk_level']} RISK]." },
-        { 'step': 3, 'title': '📱 User Notification Sent', 'detail': f"Dispatched immediate SMS notification to {selected_acc.get('phone_number', '+91 98450 12345')}." },
-        { 'step': 4, 'title': '📞 Automated Call Initiated', 'detail': "Calling user for interactive voice authentication..." },
+        { 'step': 3, 'title': '📱 Cellular SMS Dispatched', 'detail': f"Sent real SMS notification to {selected_acc.get('phone_number', '+91 8148534339')} via Twilio." },
+        { 'step': 4, 'title': '📞 Automated Outbound Call Ready', 'detail': "Prepared to place real cellular call to physical phone..." },
         { 'step': 5, 'title': 'Interactive Verification Ready', 'detail': "Awaiting call attendance (YES -> Verify | NO -> Retry -> Hold -> Admin Review)." }
     ]
 
@@ -947,6 +949,27 @@ def api_save_settings():
             transaction_limit=tx_limit, twilio_sid=twilio_sid, twilio_token=twilio_token,
             twilio_phone=twilio_phone, target_phone=target_phone, enabled=enabled
         )
+
+        if twilio_sid:
+            os.environ['TWILIO_ACCOUNT_SID'] = twilio_sid
+        if twilio_token:
+            os.environ['TWILIO_AUTH_TOKEN'] = twilio_token
+        if twilio_phone:
+            os.environ['TWILIO_PHONE_NUMBER'] = twilio_phone
+        if target_phone:
+            os.environ['DEFAULT_RECIPIENT_PHONE'] = target_phone
+
+        try:
+            env_path = os.path.join(os.path.dirname(__file__), '.env')
+            with open(env_path, 'w', encoding='utf-8') as f:
+                f.write(f"TWILIO_ACCOUNT_SID={twilio_sid}\n")
+                f.write(f"TWILIO_AUTH_TOKEN={twilio_token}\n")
+                f.write(f"TWILIO_PHONE_NUMBER={twilio_phone}\n")
+                f.write(f"DEFAULT_RECIPIENT_PHONE={target_phone}\n")
+                f.write("SECRET_KEY=fraudguard-ai-hackathon-2026-secret-key-3f1b0989\n")
+        except Exception:
+            pass
+
         return jsonify({'success': True, 'message': 'System engine parameters & Telephony Gateway settings updated successfully.'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
