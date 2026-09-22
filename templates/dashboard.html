@@ -112,6 +112,64 @@
         </div>
     </div>
 
+    <!-- ================= 2.5 TWILIO WEB APPLICATION CONSOLE HUB ================= -->
+    <div class="panel-card" style="margin-bottom: 2rem; border-left: 4px solid #F22F46; background: #0A162B;">
+        <div class="panel-header" style="margin-bottom: 1rem;">
+            <div>
+                <h3 class="panel-title" style="color: #FFFFFF; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="display: inline-block; width: 12px; height: 12px; background: #F22F46; border-radius: 2px;"></span>
+                    Twilio Web Application &amp; Cellular Telephony Gateway
+                </h3>
+                <p style="font-size: 13px; color: #94A3B8; margin-top: 2px;">
+                    Directly make calls and send SMS to the logged-in user (<strong style="color: #34D399;" class="mono">{{ active_user_phone }}</strong>) via the Twilio Web Application or in-app cellular triggers.
+                </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="risk-tag {% if twilio_configured %}low{% else %}medium{% endif %}">
+                    {% if twilio_configured %}TWILIO CONNECTED{% else %}ACCOUNT READY{% endif %}
+                </span>
+                <button type="button" onclick="openPhoneSwitchModal()" class="btn btn-outline btn-sm" style="font-size: 11px; padding: 4px 8px; color: #60A5FA; border-color: #38BDF8;">
+                    🔄 Change Target Handset
+                </button>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+            <!-- Button 1: Twilio Web Voice Console -->
+            <a href="{{ twilio_web_voice_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background: #1E3A8A; border-color: #3B82F6; justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none;">
+                <i class="icon-phone-outgoing"></i> 🌐 Open Twilio Web Dialer
+            </a>
+
+            <!-- Button 2: Twilio Web SMS Console -->
+            <a href="{{ twilio_web_sms_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background: #065F46; border-color: #10B981; justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none;">
+                <i class="icon-message-square"></i> 💬 Open Twilio Web SMS
+            </a>
+
+            <!-- Button 3: Twilio Call Logs -->
+            <a href="{{ twilio_call_logs_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none; color: #CBD5E1;">
+                <i class="icon-list"></i> 📋 Twilio Call Logs
+            </a>
+
+            <!-- Button 4: Twilio SMS Logs -->
+            <a href="{{ twilio_sms_logs_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none; color: #CBD5E1;">
+                <i class="icon-file-text"></i> 📱 Twilio SMS Logs
+            </a>
+
+            <!-- Button 5: Verified Caller IDs -->
+            <a href="{{ twilio_verified_numbers_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none; color: #FCD34D; border-color: #D97706;">
+                <i class="icon-check-circle"></i> ✅ Verify Number in Twilio
+            </a>
+        </div>
+
+        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #162C54; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #94A3B8; flex-wrap: wrap; gap: 0.5rem;">
+            <span>Connected Twilio SID: <code class="mono" style="color: #60A5FA;">{{ twilio_sid }}</code> &bull; Active Caller Target: <code class="mono" style="color: #34D399;">{{ active_user_phone }}</code></span>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" id="hubTestCallBtn" class="btn btn-green btn-sm" style="font-size: 11px; padding: 3px 10px;">📞 Quick Call My Phone</button>
+                <button type="button" id="hubTestSmsBtn" class="btn btn-primary btn-sm" style="font-size: 11px; padding: 3px 10px;">📩 Quick SMS My Phone</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= 3. ADMIN REVIEW QUEUE (ACCOUNTS ON HOLD) ================= -->
     {% if review_queue %}
     <div class="panel-card" style="margin-bottom: 2rem; border-left: 4px solid #F59E0B;">
@@ -413,9 +471,11 @@
                 </button>
             </div>
 
-            <div style="margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid #162C54; font-size: 11px; color: #94A3B8;">
-                <span>📡 Outbound Cellular Route: <strong>Twilio Voice API</strong> &rarr; Cellular Telecom Carriers &rarr; Physical Handset (+91 8148534339)</span>
-                &bull; <a href="{{ url_for('settings_view') }}" style="color: #60A5FA; text-decoration: underline;">Settings</a>
+            <div style="margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid #162C54; font-size: 11px; color: #94A3B8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <span>📡 Route: <strong>Twilio Voice API</strong> &rarr; Target Handset (<strong id="flowCallTargetPhoneDisplay" style="color: #34D399;" class="mono">{{ active_user_phone }}</strong>)</span>
+                <a href="{{ twilio_web_voice_url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="font-size: 10px; padding: 2px 8px; text-decoration: none; background: #1E3A8A;">
+                    🌐 Open Twilio Web Dialer &rarr;
+                </a>
             </div>
         </div>
 
@@ -450,7 +510,7 @@
                         📱 URGENT SMS VERIFICATION MESSAGE
                     </span>
                     <span id="flowSmsRecipientPhone" style="font-size: 12px; color: #34D399; font-family: 'JetBrains Mono', monospace; font-weight: 700;">
-                        +91 8148534339
+                        {{ active_user_phone }}
                     </span>
                 </div>
                 <p id="flowSmsContentText" style="font-size: 13px; color: #F1F5F9; line-height: 1.5; margin: 0;">
@@ -472,6 +532,12 @@
                     <span><i class="icon-shield-x"></i> <strong>[2] "NO, Not Done by Me (Others / Fraud)"</strong> &mdash; Unauthorized</span>
                     <span class="risk-tag critical" style="background: rgba(220, 38, 38, 0.2); color: #F87171;">BLOCK ACCOUNT IMMEDIATELY</span>
                 </button>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 0.5rem;">
+                <a href="{{ twilio_web_sms_url }}" target="_blank" rel="noopener" style="font-size: 11px; color: #38BDF8; text-decoration: underline;">
+                    🌐 Or open in Twilio Web SMS Console &rarr;
+                </a>
             </div>
 
             <div style="text-align: center;">
@@ -512,4 +578,55 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const hubTestCallBtn = document.getElementById('hubTestCallBtn');
+    const hubTestSmsBtn = document.getElementById('hubTestSmsBtn');
+
+    if (hubTestCallBtn) {
+        hubTestCallBtn.addEventListener('click', async () => {
+            hubTestCallBtn.disabled = true;
+            hubTestCallBtn.textContent = 'Dialing...';
+            try {
+                const res = await fetch('/api/telephony/test-call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: '{{ active_user_phone }}' })
+                });
+                const data = await res.json();
+                alert(data.message || 'Call triggered!');
+            } catch (e) {
+                alert('Test call error');
+            } finally {
+                hubTestCallBtn.disabled = false;
+                hubTestCallBtn.textContent = '📞 Quick Call My Phone';
+            }
+        });
+    }
+
+    if (hubTestSmsBtn) {
+        hubTestSmsBtn.addEventListener('click', async () => {
+            hubTestSmsBtn.disabled = true;
+            hubTestSmsBtn.textContent = 'Sending...';
+            try {
+                const res = await fetch('/api/telephony/test-sms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: '{{ active_user_phone }}' })
+                });
+                const data = await res.json();
+                alert(data.message || 'SMS triggered!');
+            } catch (e) {
+                alert('Test SMS error');
+            } finally {
+                hubTestSmsBtn.disabled = false;
+                hubTestSmsBtn.textContent = '📩 Quick SMS My Phone';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

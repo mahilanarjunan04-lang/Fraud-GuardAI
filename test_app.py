@@ -148,5 +148,18 @@ class FraudGuardTestCase(unittest.TestCase):
         self.assertTrue(data['success'])
         self.assertEqual(data['count'], 2)
 
+    def test_11_phone_capture_and_update(self):
+        # 1. Update phone via API
+        res = self.app.post('/api/user/update-phone', json={'phone': '9876543210'})
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['phone'], '+919876543210')
+
+        # 2. Reset back to user phone
+        res2 = self.app.post('/api/user/update-phone', json={'phone': '8148534339'})
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(res2.get_json()['phone'], '+918148534339')
+
 if __name__ == '__main__':
     unittest.main()

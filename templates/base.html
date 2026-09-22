@@ -47,6 +47,19 @@
         </div>
 
         <div class="user-badge-container">
+            <!-- Active Connected Phone Badge with Instant Switch Button -->
+            <div class="admin-phone-pill" style="display: flex; align-items: center; gap: 0.4rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); padding: 0.35rem 0.7rem; border-radius: 4px; font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; color: #34D399;" title="Target phone number for real Twilio cellular calls & SMS">
+                <span>📱</span>
+                <span id="headerLinkedPhone">{{ active_user_phone }}</span>
+                <button type="button" onclick="openPhoneSwitchModal()" style="background: none; border: none; color: #60A5FA; cursor: pointer; text-decoration: underline; font-size: 0.75rem; padding: 0; margin-left: 0.25rem; font-family: 'Inter', sans-serif; font-weight: 600;">(Switch)</button>
+            </div>
+
+            <!-- Direct Twilio Web Application Launcher -->
+            <a href="{{ twilio_web_voice_url }}" target="_blank" rel="noopener" class="btn btn-sm" style="background: #F22F46; color: #FFFFFF; font-weight: 700; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; text-decoration: none; padding: 0.35rem 0.7rem; border: none;" title="Open Twilio Web Application Console">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="8" r="2" fill="#FFF"/><circle cx="16" cy="8" r="2" fill="#FFF"/><circle cx="8" cy="16" r="2" fill="#FFF"/><circle cx="16" cy="16" r="2" fill="#FFF"/></svg>
+                Twilio Web App
+            </a>
+
             <a href="{{ url_for('alerts_view') }}" class="notif-bell-btn" title="Pending Security Alerts">
                 <i class="icon-bell"></i>
                 <span class="notif-badge-count" id="headerAlertCount">3</span>
@@ -135,9 +148,75 @@
 
 
 
+    <!-- Switch Phone Modal -->
+    <div class="modal-backdrop" id="phoneSwitchModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: #0E1F3D; border: 1px solid #162C54; border-radius: 6px; padding: 1.5rem; max-width: 440px; width: 90%; color: #FFF; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; color: #34D399; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>📱</span> Switch Connected Mobile Number
+                </h3>
+                <button type="button" onclick="closePhoneSwitchModal()" style="background: none; border: none; color: #94A3B8; font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            <p style="font-size: 0.85rem; color: #CBD5E1; margin-bottom: 1.25rem; line-height: 1.5;">
+                Enter your actual personal phone number. All automated Twilio voice calls, SMS alerts, and verification workflows will immediately target this physical handset.
+            </p>
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label class="form-label" style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 0.4rem; display: block;">Mobile Handset Number</label>
+                <input type="text" id="modalPhoneInput" class="form-input mono" value="{{ active_user_phone }}" placeholder="e.g. 8148534339 or +918148534339" style="width: 100%; padding: 0.65rem; border-radius: 4px; background: #071224; border: 1px solid #1E3A8A; color: #34D399; font-weight: 700; font-size: 1.05rem;">
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                <button type="button" onclick="closePhoneSwitchModal()" class="btn btn-outline btn-sm">Cancel</button>
+                <button type="button" id="modalSavePhoneBtn" onclick="submitPhoneSwitch()" class="btn btn-green btn-sm" style="font-weight: 700;">Save & Link Number &rarr;</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Core Scripts -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script>
+    function openPhoneSwitchModal() {
+        const modal = document.getElementById('phoneSwitchModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            const input = document.getElementById('modalPhoneInput');
+            if (input) input.focus();
+        }
+    }
+    function closePhoneSwitchModal() {
+        const modal = document.getElementById('phoneSwitchModal');
+        if (modal) modal.style.display = 'none';
+    }
+    async function submitPhoneSwitch() {
+        const phone = document.getElementById('modalPhoneInput').value.trim();
+        if (!phone) return alert('Please enter a valid phone number');
+        const btn = document.getElementById('modalSavePhoneBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        try {
+            const res = await fetch('/api/user/update-phone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const headerPhone = document.getElementById('headerLinkedPhone');
+                if (headerPhone) headerPhone.textContent = data.phone;
+                closePhoneSwitchModal();
+                alert('Connected phone updated to ' + data.phone + '!');
+                location.reload();
+            } else {
+                alert(data.message || 'Error updating phone');
+            }
+        } catch (e) {
+            alert('Failed to update phone number.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Save & Link Number →';
+        }
+    }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

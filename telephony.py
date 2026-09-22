@@ -45,9 +45,19 @@ def get_10_digit_number(phone_str):
         return digits[-10:]
     return '8148534339'
 
+TWILIO_WEB_APP_URLS = {
+    'voice_console': 'https://console.twilio.com/us1/develop/voice/try-voice',
+    'sms_console': 'https://console.twilio.com/us1/develop/sms/try-sms',
+    'call_logs': 'https://console.twilio.com/us1/monitor/logs/calls',
+    'sms_logs': 'https://console.twilio.com/us1/monitor/logs/sms',
+    'verified_caller_ids': 'https://console.twilio.com/us1/develop/phone-numbers/manage/verified',
+    'incoming_numbers': 'https://console.twilio.com/us1/develop/phone-numbers/manage/incoming'
+}
+
 def get_telephony_credentials():
     """
     Retrieves credentials from environment variables or database settings.
+    Auto-discovers provisioned Twilio phone numbers if not explicitly set.
     """
     sid = os.environ.get('TWILIO_ACCOUNT_SID', '').strip()
     token = os.environ.get('TWILIO_AUTH_TOKEN', '').strip()
@@ -70,6 +80,26 @@ def get_telephony_credentials():
     except Exception:
         pass
 
+    # Auto-discover provisioned incoming phone number from Twilio if available
+    if sid and token and not from_phone:
+        try:
+            from twilio.rest import Client
+            _client = Client(sid, token)
+            _incoming = _client.incoming_phone_numbers.list(limit=1)
+            if _incoming:
+                from_phone = _incoming[0].phone_number
+                os.environ['TWILIO_PHONE_NUMBER'] = from_phone
+                try:
+                    from database import get_db_connection
+                    _conn = get_db_connection()
+                    _conn.execute('UPDATE system_settings SET twilio_from_phone = ? WHERE id = 1', (from_phone,))
+                    _conn.commit()
+                    _conn.close()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     return {
         'sid': sid,
         'token': token,
@@ -77,7 +107,8 @@ def get_telephony_credentials():
         'fast2sms_key': fast2sms_key,
         'default_phone': default_phone,
         'is_configured': bool(sid and token and from_phone),
-        'has_fast2sms': bool(fast2sms_key)
+        'has_fast2sms': bool(fast2sms_key),
+        'web_urls': TWILIO_WEB_APP_URLS
     }
 
 def speak_local_voice_async(text):
@@ -150,6 +181,7 @@ def send_real_sms(to_phone, message_text):
                 'sid': message.sid,
                 'to': target_phone,
                 'status': message.status,
+                'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
                 'message': f"Real SMS dispatched to {target_phone} (SID: {message.sid})"
             }
         except Exception as e:
@@ -159,6 +191,7 @@ def send_real_sms(to_phone, message_text):
     if creds['has_fast2sms']:
         f_res = send_fast2sms(target_phone, message_text, creds['fast2sms_key'])
         if f_res.get('success'):
+            f_res['web_urls'] = creds.get('web_urls', TWILIO_WEB_APP_URLS)
             return f_res
 
     # 3. If carrier credentials not configured
@@ -167,6 +200,7 @@ def send_real_sms(to_phone, message_text):
         'success': False,
         'mode': 'CREDENTIALS_REQUIRED',
         'to': target_phone,
+        'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
         'message': f"⚠️ Real cellular SMS to physical phone {target_phone} requires Twilio credentials or Fast2SMS API key in Settings."
     }
 
@@ -219,6 +253,7 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
                 'call_sid': call.sid,
                 'to': target_phone,
                 'status': call.status,
+                'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
                 'message': f"📞 Outbound cellular call initiated! Real phone {target_phone} is ringing now (SID: {call.sid})."
             }
         except Exception as e:
@@ -228,6 +263,7 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
                 'mode': 'LIVE_TWILIO_ERROR',
                 'error': str(e),
                 'to': target_phone,
+                'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
                 'message': f"Twilio cellular call delivery failed: {str(e)}"
             }
     else:
@@ -237,6 +273,7 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
             'mode': 'CREDENTIALS_REQUIRED',
             'to': target_phone,
             'script': voice_text,
+            'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
             'message': f"⚠️ Real cellular call to physical phone {target_phone} requires Twilio credentials. Enter your Twilio Account SID, Auth Token & Twilio Virtual Number in Settings to make your phone ring."
         }
 

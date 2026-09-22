@@ -279,6 +279,24 @@ def generate_otp(identifier):
         'holder_name': acc['holder_name'] if acc else 'Valued Customer'
     }
 
+def update_user_phone(account_id, new_phone):
+    """
+    Updates phone number for an account.
+    """
+    conn = get_db_connection()
+    conn.execute('UPDATE accounts SET phone_number = ? WHERE account_id = ?', (str(new_phone).strip(), str(account_id).strip()))
+    conn.commit()
+    conn.close()
+
+def update_default_recipient_phone(new_phone):
+    """
+    Updates default_recipient_phone in system_settings table.
+    """
+    conn = get_db_connection()
+    conn.execute('UPDATE system_settings SET default_recipient_phone = ? WHERE id = 1', (str(new_phone).strip(),))
+    conn.commit()
+    conn.close()
+
 def verify_otp_code(identifier, otp_code):
     """
     Verifies the OTP code for the given identifier.
@@ -286,6 +304,7 @@ def verify_otp_code(identifier, otp_code):
     conn = get_db_connection()
     clean_id = str(identifier).strip()
     clean_otp = str(otp_code).strip()
+    digits_only = ''.join(c for c in clean_id if c.isdigit())
     
     # Also check demo universal bypass OTP for offline tests '123456'
     row = conn.execute('''
@@ -302,6 +321,15 @@ def verify_otp_code(identifier, otp_code):
         acc = get_account_by_identifier(clean_id)
         if not acc:
             acc = get_account_profile('ACC101')
+            
+        # If user entered a mobile phone number (10+ digits), interlink it to account & settings
+        if digits_only and len(digits_only) >= 10 and acc:
+            norm_phone = f"+91{digits_only[-10:]}" if not clean_id.startswith('+') else f"+{digits_only}"
+            update_user_phone(acc['account_id'], norm_phone)
+            update_default_recipient_phone(norm_phone)
+            acc = dict(acc)
+            acc['phone_number'] = norm_phone
+            
         conn.close()
         return True, dict(acc) if acc else None
     

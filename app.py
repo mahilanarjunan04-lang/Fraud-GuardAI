@@ -17,14 +17,35 @@ from database import (
     get_all_alerts, update_alert_status, get_system_settings, update_system_settings,
     get_db_connection, set_account_blocked, set_account_hold, set_account_unhold,
     set_account_admin_review, increment_call_attempt, log_customer_communication,
-    get_communications_for_account, generate_otp, verify_otp_code, process_sms_decision
+    get_communications_for_account, generate_otp, verify_otp_code, process_sms_decision,
+    update_user_phone, update_default_recipient_phone
 )
 from fraud_detection import analyze_transaction
 from ml_model import get_or_load_model
-from telephony import send_real_sms, make_real_call, send_real_otp
+from telephony import (
+    send_real_sms, make_real_call, send_real_otp,
+    normalize_phone_number, get_telephony_credentials, TWILIO_WEB_APP_URLS
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fraudguard-ai-hackathon-2026-secret-key-3f1b0989')
+
+@app.context_processor
+def inject_telephony_context():
+    creds = get_telephony_credentials()
+    user_phone = session.get('user_phone') or creds.get('default_phone', '+918148534339')
+    return {
+        'active_user_phone': user_phone,
+        'twilio_configured': creds.get('is_configured', False),
+        'twilio_sid': creds.get('sid', ''),
+        'twilio_from_phone': creds.get('from_phone', ''),
+        'twilio_web_voice_url': TWILIO_WEB_APP_URLS['voice_console'],
+        'twilio_web_sms_url': TWILIO_WEB_APP_URLS['sms_console'],
+        'twilio_call_logs_url': TWILIO_WEB_APP_URLS['call_logs'],
+        'twilio_sms_logs_url': TWILIO_WEB_APP_URLS['sms_logs'],
+        'twilio_verified_numbers_url': TWILIO_WEB_APP_URLS['verified_caller_ids'],
+        'twilio_manage_numbers_url': TWILIO_WEB_APP_URLS['incoming_numbers']
+    }
 
 def login_required(f):
     @wraps(f)
@@ -59,13 +80,19 @@ def login_view():
                 
             is_valid, account = verify_otp_code(identifier, otp_code)
             if is_valid and account:
+                norm_phone = normalize_phone_number(account.get('phone_number') or identifier)
                 session['user_id'] = account['account_id']
                 session['user_email'] = account.get('email', 'customer@bank.com')
                 session['user_name'] = account['holder_name']
                 session['user_role'] = 'Verified Customer'
                 session['user_account_id'] = account['account_id']
-                session['user_phone'] = account.get('phone_number', '+91 8148534339')
-                flash(f"Welcome back, {account['holder_name']}! Signed in via OTP verification.", 'success')
+                session['user_phone'] = norm_phone
+                try:
+                    update_default_recipient_phone(norm_phone)
+                    os.environ['DEFAULT_RECIPIENT_PHONE'] = norm_phone
+                except Exception:
+                    pass
+                flash(f"Welcome back, {account['holder_name']}! Linked to phone {norm_phone} for real calls & SMS.", 'success')
                 return redirect(url_for('dashboard_view'))
             else:
                 flash('Invalid OTP code. Please enter the active 6-digit OTP sent to your phone (or 123456).', 'danger')
@@ -76,10 +103,12 @@ def login_view():
             
             user = get_user_by_email(email)
             if user and check_password_hash(user['password_hash'], password):
+                creds = get_telephony_credentials()
                 session['user_id'] = user['id']
                 session['user_email'] = user['email']
                 session['user_name'] = user['name']
                 session['user_role'] = user['role']
+                session['user_phone'] = creds.get('default_phone', '+918148534339')
                 flash('Signed in successfully as Lead Investigator.', 'success')
                 return redirect(url_for('dashboard_view'))
             else:
@@ -281,23 +310,69 @@ def api_verify_otp():
         
     is_valid, account = verify_otp_code(identifier, otp_code)
     if is_valid and account:
+        norm_phone = normalize_phone_number(account.get('phone_number') or identifier)
         session['user_id'] = account['account_id']
         session['user_email'] = account.get('email', 'customer@bank.com')
         session['user_name'] = account['holder_name']
         session['user_role'] = 'Verified Customer'
         session['user_account_id'] = account['account_id']
-        session['user_phone'] = account.get('phone_number', '+91 8148534339')
+        session['user_phone'] = norm_phone
+        try:
+            update_default_recipient_phone(norm_phone)
+            os.environ['DEFAULT_RECIPIENT_PHONE'] = norm_phone
+        except Exception:
+            pass
         return jsonify({
             'success': True,
-            'message': 'OTP verification successful. Welcome to FraudGuard AI!',
+            'message': f'OTP verification successful. Linked to phone {norm_phone}.',
             'account': {
                 'account_id': account['account_id'],
                 'holder_name': account['holder_name'],
-                'phone': account.get('phone_number', '+91 8148534339'),
+                'phone': norm_phone,
                 'avg_amount': account.get('avg_amount', 3200.0)
             }
         })
     return jsonify({'success': False, 'message': 'Invalid OTP code. Please check your SMS or use 123456.'}), 401
+
+@app.route('/api/user/update-phone', methods=['POST'])
+def api_update_user_phone():
+    """
+    Updates the active linked phone number across user session, database, and telephony gateway.
+    """
+    data = request.get_json() or {}
+    new_phone = data.get('phone', '').strip()
+    if not new_phone:
+        return jsonify({'success': False, 'message': 'Phone number cannot be empty.'}), 400
+    
+    norm_phone = normalize_phone_number(new_phone)
+    session['user_phone'] = norm_phone
+    
+    acc_id = session.get('user_account_id', 'ACC101')
+    try:
+        update_user_phone(acc_id, norm_phone)
+        update_default_recipient_phone(norm_phone)
+        os.environ['DEFAULT_RECIPIENT_PHONE'] = norm_phone
+        
+        # Persist to .env
+        env_path = os.path.join(os.path.dirname(__file__), '.env')
+        if os.path.exists(env_path):
+            with open(env_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            import re
+            if 'DEFAULT_RECIPIENT_PHONE=' in content:
+                content = re.sub(r'DEFAULT_RECIPIENT_PHONE=.*', f'DEFAULT_RECIPIENT_PHONE={norm_phone}', content)
+            else:
+                content += f'\nDEFAULT_RECIPIENT_PHONE={norm_phone}\n'
+            with open(env_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+    except Exception as e:
+        print(f">>> [PHONE UPDATE SYNC ERROR] {e}")
+
+    return jsonify({
+        'success': True,
+        'phone': norm_phone,
+        'message': f"Linked mobile number successfully updated to {norm_phone}. Outbound calls & SMS will now target this number."
+    })
 
 # ==========================================================
 # REST API: MULTI-STAGE USER CALL & SMS DECISION WORKFLOW
@@ -324,7 +399,8 @@ def api_call_workflow_step(account_id):
     location = data.get('location', 'Dubai')
 
     acc = get_account_profile(account_id)
-    phone = acc['phone_number'] if acc else '+91 8148534339'
+    active_user_phone = session.get('user_phone') or os.environ.get('DEFAULT_RECIPIENT_PHONE')
+    phone = active_user_phone or (acc['phone_number'] if acc else '+918148534339')
     name = acc['holder_name'] if acc else 'Cardholder'
 
     if outcome == 'NOT_ATTENDED':
@@ -341,7 +417,9 @@ def api_call_workflow_step(account_id):
                 'success': True,
                 'next_step': 'RETRY_CALL',
                 'attempt': 2,
+                'phone': phone,
                 'telephony': call_res,
+                'twilio_web_urls': TWILIO_WEB_APP_URLS,
                 'message': f"Call Attempt #1 to {phone} was unattended. Initiating Automated Retry Call (Attempt #2)..."
             })
         else: # step == 2
@@ -362,6 +440,7 @@ def api_call_workflow_step(account_id):
                 'phone': phone,
                 'sms_text': sms_prompt,
                 'telephony': sms_res,
+                'twilio_web_urls': TWILIO_WEB_APP_URLS,
                 'message': f"📱 Call Attempt #2 missed. Dispatched urgent SMS verification to {phone}: 'Was this transaction done by you or others?'"
             })
     else: # outcome == 'ATTENDED'
@@ -529,9 +608,21 @@ def api_simulate():
     Simulates high-risk transaction -> notifies user -> initiates verification flow
     """
     accounts = get_all_accounts()
-    selected_acc = random.choice(accounts) if accounts else {
-        'account_id': 'ACC102', 'avg_amount': 3500.0, 'normal_locations': 'Chennai, Coimbatore', 'normal_hours': '08:00 - 22:00', 'phone_number': '+91 98450 12345'
-    }
+    active_target_phone = session.get('user_phone') or os.environ.get('DEFAULT_RECIPIENT_PHONE', '+918148534339')
+    user_acc_id = session.get('user_account_id')
+    
+    if user_acc_id:
+        user_acc = get_account_profile(user_acc_id)
+        selected_acc = dict(user_acc) if user_acc else (random.choice(accounts) if accounts else {
+            'account_id': 'ACC101', 'avg_amount': 3200.0, 'normal_locations': 'Chennai, Bangalore', 'normal_hours': '09:00 - 21:00', 'phone_number': active_target_phone
+        })
+    else:
+        selected_acc = random.choice(accounts) if accounts else {
+            'account_id': 'ACC102', 'avg_amount': 3500.0, 'normal_locations': 'Chennai, Coimbatore', 'normal_hours': '08:00 - 22:00', 'phone_number': '+91 98450 12345'
+        }
+    
+    if active_target_phone:
+        selected_acc['phone_number'] = active_target_phone
 
     scenario = random.choices(['critical_dubai', 'burst_velocity', 'high_delhi'], weights=[0.50, 0.30, 0.20])[0]
 
@@ -610,9 +701,9 @@ def api_simulate():
     conn.commit()
     conn.close()
 
+    recip_phone = active_target_phone or selected_acc.get('phone_number', '+918148534339')
     if analysis['risk_level'] in ['HIGH', 'CRITICAL']:
         # Auto-send real cellular SMS notification via Twilio
-        recip_phone = selected_acc.get('phone_number', '+918148534339')
         sms_msg = f"FraudGuard Alert: High-risk ₹{amount:,.0f} transaction in {location} on account {selected_acc['account_id']}. Verification call incoming."
         send_real_sms(recip_phone, sms_msg)
         log_customer_communication(
@@ -623,8 +714,8 @@ def api_simulate():
     steps = [
         { 'step': 1, 'title': 'Transaction Ingested', 'detail': f"{tx_id} ({selected_acc['account_id']}): ₹{amount:,.2f} at {location}." },
         { 'step': 2, 'title': 'AI Detects HIGH/CRITICAL RISK', 'detail': f"Composite Score: {analysis['risk_score']}/100 [{analysis['risk_level']} RISK]." },
-        { 'step': 3, 'title': '📱 Cellular SMS Dispatched', 'detail': f"Sent real SMS notification to {selected_acc.get('phone_number', '+91 8148534339')} via Twilio." },
-        { 'step': 4, 'title': '📞 Automated Outbound Call Ready', 'detail': "Prepared to place real cellular call to physical phone..." },
+        { 'step': 3, 'title': '📱 Cellular SMS Dispatched', 'detail': f"Sent real SMS notification to {recip_phone} via Twilio." },
+        { 'step': 4, 'title': '📞 Automated Outbound Call Ready', 'detail': f"Prepared to place real cellular call to physical phone ({recip_phone})..." },
         { 'step': 5, 'title': 'Interactive Verification Ready', 'detail': "Awaiting call attendance (YES -> Verify | NO -> Retry -> Hold -> Admin Review)." }
     ]
 
@@ -636,6 +727,8 @@ def api_simulate():
         'account_id': selected_acc['account_id'],
         'amount': amount,
         'location': location,
+        'target_phone': recip_phone,
+        'twilio_web_urls': TWILIO_WEB_APP_URLS,
         'transaction': {
             'transaction_id': tx_id,
             'account_id': selected_acc['account_id'],
