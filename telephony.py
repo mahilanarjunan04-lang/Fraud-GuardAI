@@ -163,16 +163,20 @@ def dial_via_windows_phone_link(to_phone):
     via the user's paired cellular handset (Android/iPhone).
     """
     clean_phone = normalize_phone_number(to_phone)
+    tel_uri = f'tel:{clean_phone}'
     try:
-        import subprocess
-        subprocess.run(['cmd', '/c', 'start', f'tel:{clean_phone}'], capture_output=True)
+        if hasattr(os, 'startfile'):
+            os.startfile(tel_uri)
+        else:
+            import subprocess
+            subprocess.run(['cmd', '/c', 'start', '', tel_uri], capture_output=True)
         safe_log(f">>> [WINDOWS PHONE LINK] Triggered cellular dialer for {clean_phone}")
         return {
             'success': True,
             'mode': 'WINDOWS_PHONE_LINK',
             'to': clean_phone,
-            'tel_uri': f'tel:{clean_phone}',
-            'message': f"📱 Option B Active: Windows Phone Link dialer launched for {clean_phone}! Paired phone is dialing."
+            'tel_uri': tel_uri,
+            'message': f"Option B Active: Windows Phone Link dialer launched for {clean_phone}! Paired phone is dialing."
         }
     except Exception as e:
         safe_log(f">>> [WINDOWS PHONE LINK ERROR] {e}")
@@ -181,7 +185,7 @@ def dial_via_windows_phone_link(to_phone):
             'mode': 'WINDOWS_PHONE_LINK_ERROR',
             'error': str(e),
             'to': clean_phone,
-            'tel_uri': f'tel:{clean_phone}',
+            'tel_uri': tel_uri,
             'message': f"Failed to launch Windows Phone Link: {e}"
         }
 
@@ -191,18 +195,22 @@ def sms_via_windows_phone_link(to_phone, message_text):
     via the user's paired cellular handset.
     """
     clean_phone = normalize_phone_number(to_phone)
+    import urllib.parse
+    encoded_body = urllib.parse.quote(message_text)
+    sms_uri = f'sms:{clean_phone}?body={encoded_body}'
     try:
-        import subprocess
-        import urllib.parse
-        encoded_body = urllib.parse.quote(message_text)
-        subprocess.run(['cmd', '/c', 'start', f'sms:{clean_phone}?body={encoded_body}'], capture_output=True)
+        if hasattr(os, 'startfile'):
+            os.startfile(sms_uri)
+        else:
+            import subprocess
+            subprocess.run(['cmd', '/c', 'start', '', sms_uri], capture_output=True)
         safe_log(f">>> [WINDOWS PHONE LINK SMS] Triggered SMS composer for {clean_phone}")
         return {
             'success': True,
             'mode': 'WINDOWS_PHONE_LINK_SMS',
             'to': clean_phone,
-            'sms_uri': f'sms:{clean_phone}?body={encoded_body}',
-            'message': f"💬 Option B Active: Windows Phone Link SMS composer launched for {clean_phone}!"
+            'sms_uri': sms_uri,
+            'message': f"Option B Active: Windows Phone Link SMS composer launched for {clean_phone}!"
         }
     except Exception as e:
         return {
@@ -218,8 +226,11 @@ def launch_phone_link_app():
     Opens the Microsoft Phone Link application.
     """
     try:
-        import subprocess
-        subprocess.run(['cmd', '/c', 'start', 'ms-phone-link:'], capture_output=True)
+        if hasattr(os, 'startfile'):
+            os.startfile('ms-phone-link:')
+        else:
+            import subprocess
+            subprocess.run(['cmd', '/c', 'start', '', 'ms-phone-link:'], capture_output=True)
         return {'success': True, 'message': 'Microsoft Phone Link application opened.'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
