@@ -157,13 +157,85 @@ def send_fast2sms(to_phone, message_text, api_key):
     except Exception as e:
         return {'success': False, 'mode': 'FAST2SMS_ERROR', 'error': str(e)}
 
-def send_real_sms(to_phone, message_text):
+def dial_via_windows_phone_link(to_phone):
     """
-    Sends a real SMS to the user's mobile number via Twilio, Fast2SMS, or logs live simulation.
+    Option B: Invokes Windows Phone Link on the host machine to dial the target phone
+    via the user's paired cellular handset (Android/iPhone).
+    """
+    clean_phone = normalize_phone_number(to_phone)
+    try:
+        import subprocess
+        subprocess.run(['cmd', '/c', 'start', f'tel:{clean_phone}'], capture_output=True)
+        safe_log(f">>> [WINDOWS PHONE LINK] Triggered cellular dialer for {clean_phone}")
+        return {
+            'success': True,
+            'mode': 'WINDOWS_PHONE_LINK',
+            'to': clean_phone,
+            'tel_uri': f'tel:{clean_phone}',
+            'message': f"📱 Option B Active: Windows Phone Link dialer launched for {clean_phone}! Paired phone is dialing."
+        }
+    except Exception as e:
+        safe_log(f">>> [WINDOWS PHONE LINK ERROR] {e}")
+        return {
+            'success': False,
+            'mode': 'WINDOWS_PHONE_LINK_ERROR',
+            'error': str(e),
+            'to': clean_phone,
+            'tel_uri': f'tel:{clean_phone}',
+            'message': f"Failed to launch Windows Phone Link: {e}"
+        }
+
+def sms_via_windows_phone_link(to_phone, message_text):
+    """
+    Option B: Invokes Windows Phone Link on the host machine to dispatch SMS
+    via the user's paired cellular handset.
+    """
+    clean_phone = normalize_phone_number(to_phone)
+    try:
+        import subprocess
+        import urllib.parse
+        encoded_body = urllib.parse.quote(message_text)
+        subprocess.run(['cmd', '/c', 'start', f'sms:{clean_phone}?body={encoded_body}'], capture_output=True)
+        safe_log(f">>> [WINDOWS PHONE LINK SMS] Triggered SMS composer for {clean_phone}")
+        return {
+            'success': True,
+            'mode': 'WINDOWS_PHONE_LINK_SMS',
+            'to': clean_phone,
+            'sms_uri': f'sms:{clean_phone}?body={encoded_body}',
+            'message': f"💬 Option B Active: Windows Phone Link SMS composer launched for {clean_phone}!"
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'mode': 'WINDOWS_PHONE_LINK_ERROR',
+            'error': str(e),
+            'to': clean_phone,
+            'message': f"Failed to launch Windows Phone Link SMS: {e}"
+        }
+
+def launch_phone_link_app():
+    """
+    Opens the Microsoft Phone Link application.
+    """
+    try:
+        import subprocess
+        subprocess.run(['cmd', '/c', 'start', 'ms-phone-link:'], capture_output=True)
+        return {'success': True, 'message': 'Microsoft Phone Link application opened.'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+def send_real_sms(to_phone, message_text, prefer_option_b=False):
+    """
+    Sends a real SMS to the user's mobile number via Twilio, Fast2SMS, or Option B Windows Phone Link.
     """
     creds = get_telephony_credentials()
     target_phone = normalize_phone_number(to_phone or creds['default_phone'])
     
+    if prefer_option_b:
+        w_res = sms_via_windows_phone_link(target_phone, message_text)
+        w_res['web_urls'] = creds.get('web_urls', TWILIO_WEB_APP_URLS)
+        return w_res
+
     # 1. Try Twilio if configured
     if creds['is_configured']:
         try:
@@ -194,20 +266,16 @@ def send_real_sms(to_phone, message_text):
             f_res['web_urls'] = creds.get('web_urls', TWILIO_WEB_APP_URLS)
             return f_res
 
-    # 3. If carrier credentials not configured
-    safe_log(f">>> [TELEPHONY NOTICE] Real SMS cannot reach physical phone {target_phone}: Carrier credentials not set.")
-    return {
-        'success': False,
-        'mode': 'CREDENTIALS_REQUIRED',
-        'to': target_phone,
-        'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
-        'message': f"⚠️ Real cellular SMS to physical phone {target_phone} requires Twilio credentials or Fast2SMS API key in Settings."
-    }
+    # 3. Option B: Automatic Windows Phone Link cellular SMS fallback
+    safe_log(f">>> [TELEPHONY OPTION B] Triggering Windows Phone Link SMS for {target_phone}...")
+    w_res = sms_via_windows_phone_link(target_phone, message_text)
+    w_res['web_urls'] = creds.get('web_urls', TWILIO_WEB_APP_URLS)
+    return w_res
 
-def make_real_call(to_phone, voice_text=None, transaction_details=None):
+def make_real_call(to_phone, voice_text=None, transaction_details=None, prefer_option_b=False):
     """
-    Initiates an actual live outbound voice call to the person's physical phone via Twilio Voice API.
-    Does NOT simulate or display on the laptop screen.
+    Initiates an actual live outbound voice call to the person's physical phone.
+    Supports Option A (Twilio Voice API) and Option B (Windows Phone Link cellular dialer).
     """
     creds = get_telephony_credentials()
     target_phone = normalize_phone_number(to_phone or creds['default_phone'])
@@ -225,6 +293,16 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
             f"Thank you."
         )
 
+    # Option B requested or Twilio not fully configured with a from_phone
+    if prefer_option_b or not creds['is_configured']:
+        safe_log(f">>> [TELEPHONY OPTION B] Triggering Windows Phone Link dialer for {target_phone}...")
+        w_res = dial_via_windows_phone_link(target_phone)
+        w_res['script'] = voice_text
+        w_res['web_urls'] = creds.get('web_urls', TWILIO_WEB_APP_URLS)
+        if not creds['is_configured']:
+            w_res['notice'] = "Twilio virtual number not set yet; Option B (Windows Phone Link) auto-invoked to dial cellular phone."
+        return w_res
+
     # Twilio outbound cellular phone call
     twiml_payload = f"""<Response>
     <Pause length="1"/>
@@ -237,45 +315,31 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
     </Say>
 </Response>"""
 
-    if creds['is_configured']:
-        try:
-            from twilio.rest import Client
-            client = Client(creds['sid'], creds['token'])
-            call = client.calls.create(
-                twiml=twiml_payload,
-                to=target_phone,
-                from_=creds['from_phone']
-            )
-            safe_log(f">>> [TWILIO LIVE CELLULAR CALL] Dispatched to {target_phone} | Call SID: {call.sid}")
-            return {
-                'success': True,
-                'mode': 'LIVE_TWILIO',
-                'call_sid': call.sid,
-                'to': target_phone,
-                'status': call.status,
-                'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
-                'message': f"📞 Outbound cellular call initiated! Real phone {target_phone} is ringing now (SID: {call.sid})."
-            }
-        except Exception as e:
-            safe_log(f">>> [TWILIO CALL ERROR] {e}")
-            return {
-                'success': False,
-                'mode': 'LIVE_TWILIO_ERROR',
-                'error': str(e),
-                'to': target_phone,
-                'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
-                'message': f"Twilio cellular call delivery failed: {str(e)}"
-            }
-    else:
-        safe_log(f">>> [TELEPHONY NOTICE] Cannot dial physical phone {target_phone}: Twilio credentials not configured.")
+    try:
+        from twilio.rest import Client
+        client = Client(creds['sid'], creds['token'])
+        call = client.calls.create(
+            twiml=twiml_payload,
+            to=target_phone,
+            from_=creds['from_phone']
+        )
+        safe_log(f">>> [TWILIO LIVE CELLULAR CALL] Dispatched to {target_phone} | Call SID: {call.sid}")
         return {
-            'success': False,
-            'mode': 'CREDENTIALS_REQUIRED',
+            'success': True,
+            'mode': 'LIVE_TWILIO',
+            'call_sid': call.sid,
             'to': target_phone,
-            'script': voice_text,
+            'status': call.status,
             'web_urls': creds.get('web_urls', TWILIO_WEB_APP_URLS),
-            'message': f"⚠️ Real cellular call to physical phone {target_phone} requires Twilio credentials. Enter your Twilio Account SID, Auth Token & Twilio Virtual Number in Settings to make your phone ring."
+            'message': f"📞 Outbound cellular call initiated! Real phone {target_phone} is ringing now (SID: {call.sid})."
         }
+    except Exception as e:
+        safe_log(f">>> [TWILIO CALL ERROR] {e}. Falling back to Option B Windows Phone Link...")
+        w_res = dial_via_windows_phone_link(target_phone)
+        w_res['script'] = voice_text
+        w_res['web_urls'] = creds.get('web_urls', TWILIO_WEB_APP_URLS)
+        w_res['twilio_error'] = str(e)
+        return w_res
 
 def send_real_otp(to_phone, otp_code):
     """

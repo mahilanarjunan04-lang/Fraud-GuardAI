@@ -24,7 +24,8 @@ from fraud_detection import analyze_transaction
 from ml_model import get_or_load_model
 from telephony import (
     send_real_sms, make_real_call, send_real_otp,
-    normalize_phone_number, get_telephony_credentials, TWILIO_WEB_APP_URLS
+    normalize_phone_number, get_telephony_credentials, TWILIO_WEB_APP_URLS,
+    dial_via_windows_phone_link, sms_via_windows_phone_link, launch_phone_link_app
 )
 
 app = Flask(__name__)
@@ -601,6 +602,39 @@ def api_test_sms():
     msg = f"🔔 FraudGuard AI Test Alert: Real-time Telephony Gateway is connected! Ready to defend account ACC101 against fraudulent transactions."
     result = send_real_sms(target_phone, msg)
     return jsonify(result)
+
+# ==========================================================
+# REST API: OPTION B WINDOWS PHONE LINK INTEGRATION
+# ==========================================================
+
+@app.route('/api/telephony/windows-dial', methods=['POST'])
+def api_windows_dial():
+    """
+    Option B: Launches Windows Phone Link to dial target phone directly from the host system.
+    """
+    data = request.get_json() or {}
+    phone = data.get('phone') or session.get('user_phone') or os.environ.get('DEFAULT_RECIPIENT_PHONE', '+918148534339')
+    res = dial_via_windows_phone_link(phone)
+    return jsonify(res)
+
+@app.route('/api/telephony/windows-sms', methods=['POST'])
+def api_windows_sms():
+    """
+    Option B: Launches Windows Phone Link SMS composer for target phone directly from the host system.
+    """
+    data = request.get_json() or {}
+    phone = data.get('phone') or session.get('user_phone') or os.environ.get('DEFAULT_RECIPIENT_PHONE', '+918148534339')
+    msg = data.get('message', 'FraudGuard AI Security Alert: Suspicious transaction detected. Did you authorize this?')
+    res = sms_via_windows_phone_link(phone, msg)
+    return jsonify(res)
+
+@app.route('/api/telephony/launch-phone-link', methods=['POST'])
+def api_launch_phone_link():
+    """
+    Option B: Opens the native Microsoft Phone Link desktop app.
+    """
+    res = launch_phone_link_app()
+    return jsonify(res)
 
 @app.route('/api/simulate', methods=['POST'])
 def api_simulate():

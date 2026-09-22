@@ -134,35 +134,45 @@
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
-            <!-- Button 1: Twilio Web Voice Console -->
-            <a href="{{ twilio_web_voice_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background: #1E3A8A; border-color: #3B82F6; justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none;">
-                <i class="icon-phone-outgoing"></i> 🌐 Open Twilio Web Dialer
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem;">
+            <!-- Option B: Direct Cellular Dial via Windows Phone Link -->
+            <a href="tel:{{ active_user_phone }}" class="btn btn-green" style="justify-content: center; font-size: 11px; padding: 0.65rem 0.5rem; text-decoration: none; font-weight: 700;">
+                <i class="icon-phone-call"></i> 📱 Option B: Phone Link Dial
             </a>
 
-            <!-- Button 2: Twilio Web SMS Console -->
-            <a href="{{ twilio_web_sms_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background: #065F46; border-color: #10B981; justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none;">
-                <i class="icon-message-square"></i> 💬 Open Twilio Web SMS
+            <!-- Option B: Direct SMS via Windows Phone Link -->
+            <button type="button" id="btnHubOptionBSms" class="btn btn-primary" style="justify-content: center; font-size: 11px; padding: 0.65rem 0.5rem; font-weight: 700;">
+                <i class="icon-message-square"></i> 💬 Option B: Phone Link SMS
+            </button>
+
+            <!-- Option A: Twilio Web Voice Console -->
+            <a href="{{ twilio_web_voice_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 11px; padding: 0.65rem 0.5rem; text-decoration: none; color: #60A5FA; border-color: #1E3A8A;">
+                <i class="icon-phone-outgoing"></i> 🌐 Twilio Web Dialer
             </a>
 
-            <!-- Button 3: Twilio Call Logs -->
-            <a href="{{ twilio_call_logs_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none; color: #CBD5E1;">
-                <i class="icon-list"></i> 📋 Twilio Call Logs
+            <!-- Option A: Twilio Web SMS Console -->
+            <a href="{{ twilio_web_sms_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 11px; padding: 0.65rem 0.5rem; text-decoration: none; color: #34D399; border-color: #065F46;">
+                <i class="icon-message-square"></i> 💬 Twilio Web SMS
             </a>
 
-            <!-- Button 4: Twilio SMS Logs -->
-            <a href="{{ twilio_sms_logs_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none; color: #CBD5E1;">
-                <i class="icon-file-text"></i> 📱 Twilio SMS Logs
+            <!-- Twilio Call Logs -->
+            <a href="{{ twilio_call_logs_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 11px; padding: 0.65rem 0.5rem; text-decoration: none; color: #CBD5E1;">
+                <i class="icon-list"></i> 📋 Call Logs
             </a>
 
-            <!-- Button 5: Verified Caller IDs -->
-            <a href="{{ twilio_verified_numbers_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 12px; padding: 0.7rem 0.5rem; text-decoration: none; color: #FCD34D; border-color: #D97706;">
-                <i class="icon-check-circle"></i> ✅ Verify Number in Twilio
+            <!-- Twilio SMS Logs -->
+            <a href="{{ twilio_sms_logs_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="justify-content: center; font-size: 11px; padding: 0.65rem 0.5rem; text-decoration: none; color: #CBD5E1;">
+                <i class="icon-file-text"></i> 📱 SMS Logs
+            </a>
+
+            <!-- Microsoft Phone Link Desktop App -->
+            <a href="ms-phone-link:" class="btn btn-outline" style="justify-content: center; font-size: 11px; padding: 0.65rem 0.5rem; text-decoration: none; color: #38BDF8; border-color: #0284C7;">
+                <i class="icon-smartphone"></i> 🔗 Open Phone Link
             </a>
         </div>
 
         <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #162C54; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #94A3B8; flex-wrap: wrap; gap: 0.5rem;">
-            <span>Connected Twilio SID: <code class="mono" style="color: #60A5FA;">{{ twilio_sid }}</code> &bull; Active Caller Target: <code class="mono" style="color: #34D399;">{{ active_user_phone }}</code></span>
+            <span>Connected Mobile Handset: <strong class="mono" style="color: #34D399;">{{ active_user_phone }}</strong> &bull; Twilio SID: <code class="mono" style="color: #60A5FA;">{{ twilio_sid }}</code></span>
             <div style="display: flex; gap: 0.5rem;">
                 <button type="button" id="hubTestCallBtn" class="btn btn-green btn-sm" style="font-size: 11px; padding: 3px 10px;">📞 Quick Call My Phone</button>
                 <button type="button" id="hubTestSmsBtn" class="btn btn-primary btn-sm" style="font-size: 11px; padding: 3px 10px;">📩 Quick SMS My Phone</button>
@@ -471,9 +481,15 @@
                 </button>
             </div>
 
-            <div style="margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid #162C54; font-size: 11px; color: #94A3B8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                <span>📡 Route: <strong>Twilio Voice API</strong> &rarr; Target Handset (<strong id="flowCallTargetPhoneDisplay" style="color: #34D399;" class="mono">{{ active_user_phone }}</strong>)</span>
-                <a href="{{ twilio_web_voice_url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="font-size: 10px; padding: 2px 8px; text-decoration: none; background: #1E3A8A;">
+            <div style="margin-top: 0.75rem;">
+                <a href="tel:{{ active_user_phone }}" class="btn btn-green btn-sm" style="width: 100%; text-align: center; text-decoration: none; font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0.5rem;">
+                    <i class="icon-phone-call"></i> 📱 Option B: Dial Physical Handset via Windows Phone Link
+                </a>
+            </div>
+
+            <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #162C54; font-size: 11px; color: #94A3B8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <span>📡 Routes: <strong>Option A (Twilio)</strong> &bull; <strong>Option B (Phone Link)</strong> &rarr; <strong id="flowCallTargetPhoneDisplay" style="color: #34D399;" class="mono">{{ active_user_phone }}</strong></span>
+                <a href="{{ twilio_web_voice_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="font-size: 10px; padding: 2px 8px; text-decoration: none; color: #60A5FA;">
                     🌐 Open Twilio Web Dialer &rarr;
                 </a>
             </div>
@@ -516,6 +532,15 @@
                 <p id="flowSmsContentText" style="font-size: 13px; color: #F1F5F9; line-height: 1.5; margin: 0;">
                     Bank Security Alert: A transaction of ₹75,000 at Dubai was requested on your account. Was this transaction done by you or others?
                 </p>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                <button type="button" id="btnModalOptionBSms" class="btn btn-primary btn-sm" style="flex: 1; font-weight: 700; font-size: 11px; justify-content: center;">
+                    💬 Option B: Compose in Phone Link
+                </button>
+                <a href="{{ twilio_web_sms_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="flex: 1; font-size: 11px; text-decoration: none; justify-content: center; color: #38BDF8;">
+                    🌐 Option A: Twilio Web SMS &rarr;
+                </a>
             </div>
 
             <div style="font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 0.75rem; text-align: center;">
@@ -627,6 +652,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Option B: Windows Phone Link SMS triggers
+    const triggerOptionBSms = async () => {
+        try {
+            const res = await fetch('/api/telephony/windows-sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: '{{ active_user_phone }}',
+                    message: 'Bank Security Alert: High-risk transaction detected on your account. Was this done by you? Reply [1: DONE BY ME] or [2: NOT DONE BY ME / FRAUD].'
+                })
+            });
+            const data = await res.json();
+            alert(data.message || 'Windows Phone Link SMS composer launched!');
+        } catch (e) {
+            alert('Error triggering Windows Phone Link SMS');
+        }
+    };
+
+    const btnHubOptionBSms = document.getElementById('btnHubOptionBSms');
+    if (btnHubOptionBSms) btnHubOptionBSms.addEventListener('click', triggerOptionBSms);
+
+    const btnModalOptionBSms = document.getElementById('btnModalOptionBSms');
+    if (btnModalOptionBSms) btnModalOptionBSms.addEventListener('click', triggerOptionBSms);
 });
 </script>
 {% endblock %}

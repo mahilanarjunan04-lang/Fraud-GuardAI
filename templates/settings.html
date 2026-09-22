@@ -123,20 +123,28 @@
                 </span>
             </div>
 
-            <!-- Clear 2-Minute Physical Phone Setup Banner -->
+            <!-- Option A vs Option B Comparison Banner -->
             <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid #10B981; border-radius: 6px; padding: 1rem; margin: 0.75rem 0 1.25rem 0;">
                 <div style="font-size: 13px; font-weight: 700; color: #34D399; margin-bottom: 6px;">
-                    📱 How to make your physical phone (+91 8148534339) ring:
+                    📱 Two Methods to Ring Physical Phone (<span class="mono">{{ active_user_phone }}</span>):
                 </div>
-                <div style="font-size: 12px; color: #CBD5E1; line-height: 1.6;">
-                    A laptop has no cellular SIM card, so placing a real call to ring your physical phone requires a Telephony Gateway (Twilio).
-                    <ol style="margin: 6px 0 0 1.2rem; padding: 0;">
-                        <li>Create a free account at <a href="https://www.twilio.com/try-twilio" target="_blank" style="color: #60A5FA; text-decoration: underline; font-weight: 600;">twilio.com/try-twilio</a> (Free trial, no credit card needed).</li>
-                        <li>Verify your phone number (<strong>+91 8148534339</strong>).</li>
-                        <li>Click <strong>"Get phone number"</strong> on your Twilio console.</li>
-                        <li>Copy your <strong>Account SID</strong>, <strong>Auth Token</strong>, and <strong>Phone Number</strong> into the inputs below and click <strong>Save</strong>.</li>
-                        <li>Click <strong>[ 📞 Test Call My Phone ]</strong> &rarr; your real physical phone will ring immediately!</li>
-                    </ol>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;">
+                    <div style="background: #08142A; border: 1px solid #3B82F6; border-radius: 4px; padding: 0.75rem;">
+                        <div style="font-weight: 700; color: #60A5FA; font-size: 12px; margin-bottom: 4px;">
+                            Option A: Twilio Cloud Telephony
+                        </div>
+                        <div style="font-size: 11px; color: #CBD5E1; line-height: 1.4;">
+                            Automated cloud IVR calls with Polly Indian English voice alert. Routes calls over international telecom carriers.
+                        </div>
+                    </div>
+                    <div style="background: #08142A; border: 1px solid #10B981; border-radius: 4px; padding: 0.75rem;">
+                        <div style="font-weight: 700; color: #34D399; font-size: 12px; margin-bottom: 4px;">
+                            Option B: Windows Phone Link (Direct Handset)
+                        </div>
+                        <div style="font-size: 11px; color: #CBD5E1; line-height: 1.4;">
+                            No Twilio virtual number needed! Uses Microsoft Phone Link to command your paired smartphone (via Bluetooth/Wi-Fi) to dial over cellular carrier.
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -155,7 +163,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" style="color: #CBD5E1;">Twilio Account SID (Required for Cellular Network Calls)</label>
+                    <label class="form-label" style="color: #CBD5E1;">Twilio Account SID (Option A)</label>
                     <input 
                         type="text" 
                         id="twilioSidInput" 
@@ -166,7 +174,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" style="color: #CBD5E1;">Twilio Auth Token (Required)</label>
+                    <label class="form-label" style="color: #CBD5E1;">Twilio Auth Token (Option A)</label>
                     <input 
                         type="password" 
                         id="twilioTokenInput" 
@@ -190,7 +198,7 @@
                 <!-- Twilio Web Application Quick Launchers -->
                 <div style="background: #08142A; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; margin-top: 1rem;">
                     <div style="font-size: 11px; font-weight: 700; color: #FCD34D; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                        <span>🌐 Twilio Web Application Consoles</span>
+                        <span>🌐 Option A: Twilio Web Application Consoles</span>
                         <span style="color: #94A3B8; font-size: 10px;">console.twilio.com</span>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
@@ -212,20 +220,23 @@
                     </div>
                 </div>
 
-                <!-- 1-Click Direct Telephony Test Triggers -->
+                <!-- Direct Outbound Dialing Actions -->
                 <div style="background: #08142A; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; margin-top: 1rem;">
                     <div style="font-size: 11px; font-weight: 700; color: #34D399; text-transform: uppercase; margin-bottom: 0.5rem;">
-                        ⚡ Direct Outbound Dialing Actions
+                        ⚡ Direct Outbound Dialing Actions (Option A &amp; Option B)
                     </div>
                     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                        <button type="button" id="btnTestRealCall" class="btn btn-green btn-sm" style="flex: 1; min-width: 180px;">
-                            <i class="icon-phone"></i> 📞 Test Call My Phone (Twilio)
-                        </button>
-                        <a href="tel:{{ active_user_phone }}" class="btn btn-outline btn-sm" style="flex: 1; min-width: 180px; text-align: center; color: #38BDF8; border-color: #38BDF8;">
-                            <i class="icon-phone-forwarded"></i> 📱 Dial via Windows Phone Link
+                        <a href="tel:{{ active_user_phone }}" id="btnOptionBWindowsDial" class="btn btn-green btn-sm" style="flex: 1; min-width: 200px; text-align: center; text-decoration: none;">
+                            <i class="icon-phone-call"></i> 📱 Option B: Dial via Windows Phone Link
                         </a>
-                        <button type="button" id="btnTestRealSms" class="btn btn-primary btn-sm" style="flex: 1; min-width: 180px;">
-                            <i class="icon-message-square"></i> 📱 Test SMS My Phone
+                        <button type="button" id="btnOptionBWindowsSms" class="btn btn-primary btn-sm" style="flex: 1; min-width: 200px;">
+                            <i class="icon-message-square"></i> 💬 Option B: Send SMS via Phone Link
+                        </button>
+                        <button type="button" id="btnTestRealCall" class="btn btn-outline btn-sm" style="flex: 1; min-width: 180px; color: #CBD5E1;">
+                            <i class="icon-phone"></i> 📞 Option A: Test Call (Twilio)
+                        </button>
+                        <button type="button" id="btnTestRealSms" class="btn btn-outline btn-sm" style="flex: 1; min-width: 180px; color: #CBD5E1;">
+                            <i class="icon-message-square"></i> 📱 Option A: Test SMS (Twilio)
                         </button>
                     </div>
                 </div>
