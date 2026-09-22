@@ -133,6 +133,182 @@
     </footer>
     {% endif %}
 
+    <!-- ================= FLOATING CARDHOLDER PHONE WIDGET (+91 8148534339) ================= -->
+    <div id="phoneDockWidget" style="position: fixed; bottom: 20px; right: 24px; z-index: 9999;">
+        <button id="openPhoneWidgetBtn" class="btn btn-green" style="box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1.15rem; font-weight: 700; border: 2px solid #34D399; font-size: 13px;">
+            <span class="phone-pulse-dot" style="display:inline-block; width:10px; height:10px; background:#10B981; border-radius:2px; box-shadow: 0 0 8px #10B981;"></span>
+            <span>📱 Cardholder Mobile: <strong class="mono" style="color: #FFFFFF;">+91 8148534339</strong></span>
+        </button>
+    </div>
+
+    <!-- Phone Simulator Modal Frame -->
+    <div id="phoneSimulatorOverlay" class="phone-simulator-modal" style="display: none;">
+        <!-- Phone Top Status Bar -->
+        <div class="phone-status-bar">
+            <span id="phoneClockTime">12:30 PM</span>
+            <div class="phone-header-notch"></div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span>5G</span>
+                <span>100%</span>
+                <button id="closePhoneWidgetBtn" style="background: none; border: none; color: #94A3B8; font-size: 14px; cursor: pointer; font-weight: bold; margin-left: 4px;">&times;</button>
+            </div>
+        </div>
+
+        <!-- Phone Body Content -->
+        <div class="phone-content-body">
+            <!-- Top Dropdown SMS Notification Banner (Dynamic) -->
+            <div id="phoneTopSmsBanner" class="phone-sms-banner" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 10px; font-weight: 800; color: #34D399; text-transform: uppercase;">
+                        💬 BANK SECURITY ALERT
+                    </span>
+                    <span style="font-size: 10px; color: #94A3B8;">Now</span>
+                </div>
+                <div id="phoneTopSmsContent" style="font-size: 11px; color: #F1F5F9; line-height: 1.4; margin-bottom: 8px;">
+                    Alert: High-risk transaction detected.
+                </div>
+                <!-- Interactive Action Buttons Inside SMS Banner -->
+                <div id="phoneSmsActionRow" style="display: flex; gap: 6px;">
+                    <button id="phoneSmsActionSelfBtn" class="btn btn-green btn-sm" style="flex: 1; padding: 4px 6px; font-size: 10px;">
+                        [1] Yes, Me (Safe)
+                    </button>
+                    <button id="phoneSmsActionOthersBtn" class="btn btn-danger btn-sm" style="flex: 1; padding: 4px 6px; font-size: 10px;">
+                        [2] Fraud (Block)
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 1: Idle Screen (Cardholder Banking App) -->
+            <div id="phoneIdleScreen" class="phone-idle-screen">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div>
+                        <div style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: 700;">Account Holder</div>
+                        <div style="font-size: 14px; font-weight: 800; color: #FFFFFF;">Aarav Sharma</div>
+                    </div>
+                    <span class="risk-tag low" id="phoneCardStatusBadge">ACTIVE</span>
+                </div>
+
+                <!-- Digital Debit Card -->
+                <div class="phone-bank-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; opacity: 0.85;">
+                        <span>FraudGuard Secure Debit</span>
+                        <span>VISA</span>
+                    </div>
+                    <div style="font-size: 1.25rem; font-weight: 800; letter-spacing: 2px; margin: 1rem 0; font-family: 'JetBrains Mono', monospace;">
+                        4532 &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; 1014
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px;">
+                        <div>
+                            <div style="opacity: 0.7; font-size: 9px;">LINKED MOBILE</div>
+                            <div style="font-weight: 700;">+91 8148534339</div>
+                        </div>
+                        <div>
+                            <div style="opacity: 0.7; font-size: 9px;">BALANCE</div>
+                            <div style="font-weight: 800; font-size: 13px;">₹1,42,850</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Simulator Action Row -->
+                <div style="font-size: 11px; font-weight: 700; color: #94A3B8; margin-bottom: 0.5rem; text-transform: uppercase;">
+                    Telephony Live Test Controls
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button type="button" id="phoneSimulateCallBtn" class="btn btn-green btn-sm" style="font-size: 11px; padding: 6px;">
+                        📞 Trigger Test Call
+                    </button>
+                    <button type="button" id="phoneSimulateSmsBtn" class="btn btn-primary btn-sm" style="font-size: 11px; padding: 6px;">
+                        📱 Trigger Test SMS
+                    </button>
+                </div>
+
+                <!-- Live Message Feed -->
+                <div style="font-size: 11px; font-weight: 700; color: #94A3B8; margin-bottom: 0.5rem; text-transform: uppercase;">
+                    Recent Messages &amp; Calls
+                </div>
+                <div id="phoneRecentLogsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; font-size: 11px;">
+                    <div style="background: #0E1F3D; border: 1px solid #162C54; border-radius: 4px; padding: 8px;">
+                        <span style="color: #34D399; font-weight: 700;">[SECURITY]</span> FraudGuard active on cellular network.
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: Incoming Phone Call Screen (Ringing) -->
+            <div id="phoneIncomingScreen" class="phone-incoming-screen" style="display: none;">
+                <div>
+                    <span style="font-size: 11px; font-weight: 800; color: #F87171; letter-spacing: 0.08em; text-transform: uppercase;">
+                        🚨 INCOMING SECURITY CALL
+                    </span>
+                    <h3 style="font-size: 1.35rem; color: #FFFFFF; font-weight: 800; margin-top: 4px;">
+                        FraudGuard AI Desk
+                    </h3>
+                    <p id="phoneCallerSubtitle" style="font-size: 12px; color: #38BDF8; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">
+                        Dialing +91 81485 34339...
+                    </p>
+                </div>
+
+                <div class="phone-call-avatar">
+                    <i class="icon-phone"></i>
+                </div>
+
+                <div style="width: 100%;">
+                    <div style="font-size: 11px; color: #CBD5E1; margin-bottom: 1.25rem;">
+                        High-risk transaction detected! Answer call to verify.
+                    </div>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button id="phoneAcceptCallBtn" class="btn btn-green" style="flex: 1; padding: 0.75rem; font-size: 12px; font-weight: 800;">
+                            <i class="icon-phone"></i> ACCEPT
+                        </button>
+                        <button id="phoneDeclineCallBtn" class="btn btn-danger" style="flex: 1; padding: 0.75rem; font-size: 12px; font-weight: 800;">
+                            <i class="icon-phone-off"></i> DECLINE
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 3: Active Connected Call Screen -->
+            <div id="phoneConnectedScreen" class="phone-connected-screen" style="display: none;">
+                <div>
+                    <span style="font-size: 11px; font-weight: 800; color: #10B981; letter-spacing: 0.05em;">
+                        CONNECTED VOICE CALL
+                    </span>
+                    <h4 style="font-size: 1.1rem; color: #FFFFFF; margin: 4px 0 2px 0;">
+                        FraudGuard AI Security Desk
+                    </h4>
+                    <div id="phoneCallDurationTimer" class="mono" style="font-size: 14px; color: #34D399; font-weight: 700;">
+                        00:01
+                    </div>
+                </div>
+
+                <!-- Audio Wave Visualizer Simulation -->
+                <div style="margin: 1.5rem 0; background: #0E1F3D; border: 1px solid #162C54; border-radius: 4px; padding: 1rem; text-align: left;">
+                    <div style="font-size: 10px; font-weight: 700; color: #38BDF8; text-transform: uppercase; margin-bottom: 4px;">
+                        🎙️ Speaking Through Audio Speaker:
+                    </div>
+                    <p id="phoneAudioTranscript" style="font-size: 12px; color: #F1F5F9; line-height: 1.5; margin: 0;">
+                        "Hello Aarav, we detected an unusual transaction of ₹85,000 in Dubai. Did you authorize this transaction?"
+                    </p>
+                </div>
+
+                <div style="font-size: 11px; font-weight: 700; color: #94A3B8; margin-bottom: 0.5rem;">
+                    RESPOND TO VOICE VERIFICATION:
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button id="phoneVoiceSaySafeBtn" class="btn btn-green btn-sm" style="width: 100%; padding: 8px; font-size: 11px; text-align: left;">
+                        <i class="icon-check"></i> [1] "YES, Done By Me" &rarr; SAFE
+                    </button>
+                    <button id="phoneVoiceSayFraudBtn" class="btn btn-danger btn-sm" style="width: 100%; padding: 8px; font-size: 11px; text-align: left;">
+                        <i class="icon-slash"></i> [2] "NO, FRAUD!" &rarr; BLOCK ACCOUNT
+                    </button>
+                </div>
+
+                <button id="phoneEndCallBtn" class="btn btn-outline btn-sm" style="margin-top: auto; color: #F87171; border-color: #DC2626; font-size: 11px;">
+                    End Call &times;
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Core Scripts -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
