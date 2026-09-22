@@ -383,7 +383,51 @@ function initCallWorkflowModal() {
     }
 }
 
+// Real Audio Telephony Simulation via Web Audio API & SpeechSynthesis
+function playPhoneRingSound() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = 'sine';
+        osc2.type = 'sine';
+        osc1.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc2.frequency.setValueAtTime(480, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + 1.2);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(audioCtx.currentTime + 1.2);
+        osc2.stop(audioCtx.currentTime + 1.2);
+    } catch (e) {
+        console.warn('Audio ringtone notice:', e);
+    }
+}
+
+function speakVoiceScript(text) {
+    if ('speechSynthesis' in window) {
+        try {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.lang = 'en-IN';
+            window.speechSynthesis.speak(utterance);
+        } catch (e) {
+            console.warn('Speech synthesis notice:', e);
+        }
+    }
+}
+
 function startCallAttempt(attemptNum) {
+    playPhoneRingSound();
     document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 04: CALL USER (ATTEMPT ${attemptNum}/2)`;
     document.getElementById('flowCallingPane').style.display = 'block';
     document.getElementById('flowVerifyPane').style.display = 'none';
@@ -395,13 +439,16 @@ function startCallAttempt(attemptNum) {
 }
 
 function renderVerificationStage(script) {
+    const speechText = script || `Hello, this is FraudGuard AI security desk. We detected an unusual transaction of ₹${currentFlowAmount} from ${currentFlowLocation}. Did you authorize this?`;
+    speakVoiceScript(speechText);
+
     document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 05: CALL ATTENDED → CARDHOLDER VERIFICATION`;
     document.getElementById('flowCallingPane').style.display = 'none';
     document.getElementById('flowVerifyPane').style.display = 'block';
     if (document.getElementById('flowSmsDecisionPane')) document.getElementById('flowSmsDecisionPane').style.display = 'none';
     document.getElementById('flowHoldReviewPane').style.display = 'none';
 
-    document.getElementById('flowTranscriptText').innerText = script || `Hello, this is FraudGuard AI security desk. We detected an unusual transaction of ₹${currentFlowAmount} from ${currentFlowLocation}. Did you authorize this?`;
+    document.getElementById('flowTranscriptText').innerText = speechText;
 }
 
 function renderSmsDecisionStage(data) {
