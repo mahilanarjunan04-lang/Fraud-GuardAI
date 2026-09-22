@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initCsvUpload();
     initCallWorkflowModal();
     initAdminReviewWorkflow();
-    initCardholderPhoneWidget();
 });
 
 // Toast notification helper
@@ -427,25 +426,54 @@ function speakVoiceScript(text) {
     }
 }
 
-function startCallAttempt(attemptNum) {
-    document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 04: CALL USER (ATTEMPT ${attemptNum}/2)`;
+async function startCallAttempt(attemptNum) {
+    document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 04: CELLULAR CALL (ATTEMPT ${attemptNum}/2)`;
     document.getElementById('flowCallingPane').style.display = 'block';
     document.getElementById('flowVerifyPane').style.display = 'none';
     if (document.getElementById('flowSmsDecisionPane')) document.getElementById('flowSmsDecisionPane').style.display = 'none';
     document.getElementById('flowHoldReviewPane').style.display = 'none';
 
-    document.getElementById('flowCallAttemptTitle').innerText = attemptNum === 1 ? '📞 Outbound Security Call Attempt #1' : '📞 Retry Security Call Attempt #2';
-    document.getElementById('flowCallMeta').innerHTML = `Calling registered phone for <strong>${currentFlowAccId}</strong> regarding ₹${currentFlowAmount} in ${currentFlowLocation}...`;
+    document.getElementById('flowCallAttemptTitle').innerText = attemptNum === 1 ? '📞 Outbound Cellular Call Attempt #1' : '📞 Retry Outbound Call Attempt #2';
+    
+    const metaEl = document.getElementById('flowCallMeta');
+    if (metaEl) {
+        metaEl.innerHTML = `
+            Placing live cellular call to physical phone for <strong>${currentFlowAccId}</strong> regarding ₹${currentFlowAmount} in ${currentFlowLocation}...<br>
+            <div style="margin: 10px 0; font-size: 13px; color: #38BDF8; font-weight: 700; font-family: 'JetBrains Mono', monospace;">
+                Target: +91 8148534339
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px;">
+                <a href="tel:+918148534339" class="btn btn-outline btn-sm" style="color: #38BDF8; border-color: #38BDF8; font-size: 12px; padding: 4px 12px;">
+                    <i class="icon-phone-forwarded"></i> 📱 Open Windows Phone Link / System Dialer (+91 8148534339)
+                </a>
+            </div>
+        `;
+    }
 
-    // Trigger Phone Simulator incoming call with audio ring
-    if (typeof triggerPhoneSimulatorIncomingCall === 'function') {
-        triggerPhoneSimulatorIncomingCall(attemptNum, currentFlowAccId, currentFlowAmount, currentFlowLocation);
+    // Trigger backend cellular call via Twilio
+    try {
+        const res = await fetch(`/api/accounts/${currentFlowAccId}/call`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                transaction_id: currentFlowTxId,
+                amount: currentFlowAmount,
+                location: currentFlowLocation
+            })
+        });
+        const data = await res.json();
+        if (data.telephony && data.telephony.mode === 'LIVE_TWILIO') {
+            showToast(`📞 Live cellular call dispatched to physical phone ${data.phone}!`, 'success');
+        } else if (data.telephony && data.telephony.mode === 'CREDENTIALS_REQUIRED') {
+            showToast(data.telephony.message, 'warning');
+        }
+    } catch (err) {
+        console.error(err);
     }
 }
 
 function renderVerificationStage(script) {
     const speechText = script || `Hello, this is FraudGuard AI security desk. We detected an unusual transaction of ₹${currentFlowAmount} from ${currentFlowLocation}. Did you authorize this?`;
-    speakVoiceScript(speechText);
 
     document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 05: CALL ATTENDED → CARDHOLDER VERIFICATION`;
     document.getElementById('flowCallingPane').style.display = 'none';
@@ -454,11 +482,6 @@ function renderVerificationStage(script) {
     document.getElementById('flowHoldReviewPane').style.display = 'none';
 
     document.getElementById('flowTranscriptText').innerText = speechText;
-
-    // Sync connected view on Phone Simulator
-    if (typeof syncPhoneConnectedCall === 'function') {
-        syncPhoneConnectedCall(speechText);
-    }
 }
 
 function renderSmsDecisionStage(data) {
@@ -476,11 +499,7 @@ function renderSmsDecisionStage(data) {
         }
     }
     document.getElementById('flowHoldReviewPane').style.display = 'none';
-
-    // Trigger SMS Banner on Phone Simulator
-    if (typeof triggerPhoneSimulatorSms === 'function') {
-        triggerPhoneSimulatorSms(smsMsg);
-    }
+    showToast(`📱 Real SMS sent to physical phone ${data.phone || '+91 8148534339'}. Check mobile handset!`, 'info');
 }
 
 function renderAccountHoldStage(data) {
@@ -492,14 +511,6 @@ function renderAccountHoldStage(data) {
 
     document.getElementById('flowHoldAccId').innerText = currentFlowAccId;
     document.getElementById('flowHoldReason').innerText = data.message;
-
-    // Sync status on Cardholder Mobile Phone Simulator
-    if (typeof updatePhoneCardStatus === 'function') {
-        updatePhoneCardStatus('HOLD');
-    }
-    if (typeof addPhoneLog === 'function') {
-        addPhoneLog(`🔒 Cardholder account ${currentFlowAccId} placed on AUTOMATIC ACCOUNT HOLD.`, true);
-    }
 }
 
 // =========================================================================
@@ -684,408 +695,4 @@ function initCsvUpload() {
             submitBtn.innerText = 'Upload & Analyze CSV';
         }
     });
-}
-
-// =========================================================================
-// 6. CARDHOLDER MOBILE PHONE SIMULATOR (+91 8148534339)
-// =========================================================================
-
-let phoneRingInterval = null;
-let phoneCallTimerInterval = null;
-let phoneCallSeconds = 0;
-
-function playSmsChimeSound() {
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const audioCtx = new AudioContext();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-    } catch (e) {
-        console.warn('SMS chime notice:', e);
-    }
-}
-
-function startPhoneRinging() {
-    stopPhoneRinging();
-    playPhoneRingSound();
-    phoneRingInterval = setInterval(() => {
-        playPhoneRingSound();
-    }, 2800);
-}
-
-function stopPhoneRinging() {
-    if (phoneRingInterval) {
-        clearInterval(phoneRingInterval);
-        phoneRingInterval = null;
-    }
-}
-
-function startPhoneCallTimer() {
-    stopPhoneCallTimer();
-    phoneCallSeconds = 0;
-    const timerEl = document.getElementById('phoneCallDurationTimer');
-    if (timerEl) timerEl.innerText = '00:00';
-    phoneCallTimerInterval = setInterval(() => {
-        phoneCallSeconds++;
-        const mins = String(Math.floor(phoneCallSeconds / 60)).padStart(2, '0');
-        const secs = String(phoneCallSeconds % 60).padStart(2, '0');
-        if (timerEl) timerEl.innerText = `${mins}:${secs}`;
-    }, 1000);
-}
-
-function stopPhoneCallTimer() {
-    if (phoneCallTimerInterval) {
-        clearInterval(phoneCallTimerInterval);
-        phoneCallTimerInterval = null;
-    }
-}
-
-function switchPhoneView(viewName) {
-    const idleScreen = document.getElementById('phoneIdleScreen');
-    const incomingScreen = document.getElementById('phoneIncomingScreen');
-    const connectedScreen = document.getElementById('phoneConnectedScreen');
-
-    if (idleScreen) idleScreen.style.display = (viewName === 'idle') ? 'flex' : 'none';
-    if (incomingScreen) incomingScreen.style.display = (viewName === 'incoming') ? 'flex' : 'none';
-    if (connectedScreen) connectedScreen.style.display = (viewName === 'connected') ? 'flex' : 'none';
-
-    if (viewName !== 'incoming') {
-        stopPhoneRinging();
-    }
-    if (viewName !== 'connected') {
-        stopPhoneCallTimer();
-    }
-}
-
-function updatePhoneCardStatus(status) {
-    const badge = document.getElementById('phoneCardStatusBadge');
-    if (!badge) return;
-    badge.innerText = status;
-    badge.className = `risk-tag ${status.toLowerCase()}`;
-}
-
-function addPhoneLog(text, isAlert = false) {
-    const list = document.getElementById('phoneRecentLogsList');
-    if (!list) return;
-    const item = document.createElement('div');
-    item.style.cssText = `background: ${isAlert ? '#2A1215' : '#0E1F3D'}; border: 1px solid ${isAlert ? '#EF4444' : '#162C54'}; border-radius: 4px; padding: 8px; font-size: 11px; margin-bottom: 4px;`;
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    item.innerHTML = `<span style="color: ${isAlert ? '#F87171' : '#34D399'}; font-weight: 700;">[${timeStr}]</span> ${text}`;
-    list.insertBefore(item, list.firstChild);
-}
-
-function showPhoneSmsBanner(text) {
-    const banner = document.getElementById('phoneTopSmsBanner');
-    const content = document.getElementById('phoneTopSmsContent');
-    const overlay = document.getElementById('phoneSimulatorOverlay');
-
-    if (overlay && (overlay.style.display === 'none' || !overlay.style.display)) {
-        overlay.style.display = 'flex';
-    }
-
-    if (content) content.innerText = text;
-    if (banner) banner.style.display = 'block';
-
-    playSmsChimeSound();
-    addPhoneLog(`💬 SMS Received: "${text}"`);
-}
-
-function hidePhoneSmsBanner() {
-    const banner = document.getElementById('phoneTopSmsBanner');
-    if (banner) banner.style.display = 'none';
-}
-
-function triggerPhoneSimulatorIncomingCall(attemptNum, accountId, amount, location) {
-    const overlay = document.getElementById('phoneSimulatorOverlay');
-    if (overlay && (overlay.style.display === 'none' || !overlay.style.display)) {
-        overlay.style.display = 'flex';
-    }
-    const subTitle = document.getElementById('phoneCallerSubtitle');
-    if (subTitle) {
-        subTitle.innerText = `Dialing +91 81485 34339 (Attempt #${attemptNum})...`;
-    }
-    switchPhoneView('incoming');
-    startPhoneRinging();
-    addPhoneLog(`📞 Outbound security call ringing +91 8148534339 (₹${amount} in ${location})`);
-}
-
-function syncPhoneConnectedCall(speechText) {
-    switchPhoneView('connected');
-    startPhoneCallTimer();
-    const transcriptEl = document.getElementById('phoneAudioTranscript');
-    if (transcriptEl) transcriptEl.innerText = `"${speechText}"`;
-}
-
-function triggerPhoneSimulatorSms(text) {
-    showPhoneSmsBanner(text);
-}
-
-function initCardholderPhoneWidget() {
-    const openPhoneBtn = document.getElementById('openPhoneWidgetBtn');
-    const closePhoneBtn = document.getElementById('closePhoneWidgetBtn');
-    const phoneOverlay = document.getElementById('phoneSimulatorOverlay');
-
-    // Phone Clock Auto-update
-    const clockEl = document.getElementById('phoneClockTime');
-    if (clockEl) {
-        const updateClock = () => {
-            clockEl.innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        };
-        updateClock();
-        setInterval(updateClock, 30000);
-    }
-
-    // Toggle Phone Widget
-    if (openPhoneBtn && phoneOverlay) {
-        openPhoneBtn.addEventListener('click', () => {
-            if (phoneOverlay.style.display === 'none' || !phoneOverlay.style.display) {
-                phoneOverlay.style.display = 'flex';
-            } else {
-                phoneOverlay.style.display = 'none';
-            }
-        });
-    }
-
-    if (closePhoneBtn && phoneOverlay) {
-        closePhoneBtn.addEventListener('click', () => {
-            phoneOverlay.style.display = 'none';
-            stopPhoneRinging();
-        });
-    }
-
-    // 1-Click Test Call button inside Phone Simulator
-    const phoneSimulateCallBtn = document.getElementById('phoneSimulateCallBtn');
-    if (phoneSimulateCallBtn) {
-        phoneSimulateCallBtn.addEventListener('click', async () => {
-            phoneSimulateCallBtn.disabled = true;
-            phoneSimulateCallBtn.innerText = 'Dialing...';
-            try {
-                currentFlowAccId = 'ACC101';
-                currentFlowAmount = '85,000';
-                currentFlowLocation = 'Dubai';
-                currentFlowTxId = 'TX' + Math.floor(10000 + Math.random() * 90000);
-
-                const res = await fetch('/api/telephony/test-call', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: '+918148534339' })
-                });
-                const data = await res.json();
-                showToast(data.message || '📞 Outbound test call initiated!', 'success');
-                addPhoneLog(`📞 Outbound call initiated to +91 8148534339`);
-
-                const subTitle = document.getElementById('phoneCallerSubtitle');
-                if (subTitle) subTitle.innerText = `Dialing +91 81485 34339...`;
-                switchPhoneView('incoming');
-                startPhoneRinging();
-            } catch (err) {
-                showToast('Error placing test call', 'danger');
-            } finally {
-                phoneSimulateCallBtn.disabled = false;
-                phoneSimulateCallBtn.innerText = '📞 Trigger Test Call';
-            }
-        });
-    }
-
-    // 1-Click Test SMS button inside Phone Simulator
-    const phoneSimulateSmsBtn = document.getElementById('phoneSimulateSmsBtn');
-    if (phoneSimulateSmsBtn) {
-        phoneSimulateSmsBtn.addEventListener('click', async () => {
-            phoneSimulateSmsBtn.disabled = true;
-            phoneSimulateSmsBtn.innerText = 'Sending...';
-            try {
-                const res = await fetch('/api/telephony/test-sms', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: '+918148534339' })
-                });
-                const data = await res.json();
-                showToast(data.message || '📱 Real SMS dispatched to +91 8148534339!', 'success');
-                showPhoneSmsBanner(`FraudGuard Alert: High-risk ₹85,000 transaction detected in Dubai. Was this done by you? [1] YES, Done by Me  [2] NO, Fraud`);
-            } catch (err) {
-                showToast('Error sending test SMS', 'danger');
-            } finally {
-                phoneSimulateSmsBtn.disabled = false;
-                phoneSimulateSmsBtn.innerText = '📱 Trigger Test SMS';
-            }
-        });
-    }
-
-    // Call Screen Buttons: ACCEPT
-    const phoneAcceptCallBtn = document.getElementById('phoneAcceptCallBtn');
-    if (phoneAcceptCallBtn) {
-        phoneAcceptCallBtn.addEventListener('click', () => {
-            switchPhoneView('connected');
-            startPhoneCallTimer();
-
-            const scriptText = `Hello Aarav, this is the FraudGuard AI security desk. We detected an unusual high-risk transaction of ₹${currentFlowAmount || '85,000'} in ${currentFlowLocation || 'Dubai'}. Did you authorize this transaction?`;
-            
-            const transcriptEl = document.getElementById('phoneAudioTranscript');
-            if (transcriptEl) transcriptEl.innerText = `"${scriptText}"`;
-
-            speakVoiceScript(scriptText);
-            addPhoneLog(`📞 Call connected with FraudGuard Security Desk.`);
-
-            // Also synchronize with Analyst Dashboard modal if open
-            if (typeof renderVerificationStage === 'function') {
-                renderVerificationStage(scriptText);
-            }
-        });
-    }
-
-    // Call Screen Buttons: DECLINE
-    const phoneDeclineCallBtn = document.getElementById('phoneDeclineCallBtn');
-    if (phoneDeclineCallBtn) {
-        phoneDeclineCallBtn.addEventListener('click', async () => {
-            switchPhoneView('idle');
-            addPhoneLog(`📵 Cardholder declined / missed call.`);
-            showToast('Security call declined by cardholder. Evaluating next escalation step...', 'warning');
-
-            if (currentFlowAccId) {
-                try {
-                    const res = await fetch(`/api/accounts/${currentFlowAccId}/call-step`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            attempt: currentFlowAttempt,
-                            outcome: 'NOT_ATTENDED',
-                            transaction_id: currentFlowTxId || 'TX10045',
-                            amount: currentFlowAmount || '85,000',
-                            location: currentFlowLocation || 'Dubai'
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.next_step === 'RETRY_CALL') {
-                        currentFlowAttempt = 2;
-                        showToast('Call #1 was unattended. Retrying call (Attempt #2)...', 'warning');
-                        setTimeout(() => startCallAttempt(2), 1500);
-                    } else if (data.next_step === 'SMS_DECISION') {
-                        showToast('Call #2 missed. Dispatched interactive SMS verification to cardholder!', 'warning');
-                        renderSmsDecisionStage(data);
-                    } else if (data.next_step === 'ACCOUNT_HOLD') {
-                        renderAccountHoldStage(data);
-                    }
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-        });
-    }
-
-    // Connected Voice Call: Cardholder says "YES, Done by Me" -> SAFE
-    const phoneVoiceSaySafeBtn = document.getElementById('phoneVoiceSaySafeBtn');
-    if (phoneVoiceSaySafeBtn) {
-        phoneVoiceSaySafeBtn.addEventListener('click', async () => {
-            const acc = currentFlowAccId || 'ACC101';
-            speakVoiceScript('Verification confirmed. Thank you Aarav, your transaction is authorized and your account remains active.');
-            addPhoneLog(`✅ Voice confirmed: "YES, Done by Me" -> SAFE.`);
-
-            await resolveAdminReview('SAFE', 'Verified by cardholder during voice authentication call.', acc);
-            updatePhoneCardStatus('ACTIVE');
-
-            setTimeout(() => {
-                switchPhoneView('idle');
-            }, 2500);
-        });
-    }
-
-    // Connected Voice Call: Cardholder says "NO, FRAUD!" -> BLOCK ACCOUNT
-    const phoneVoiceSayFraudBtn = document.getElementById('phoneVoiceSayFraudBtn');
-    if (phoneVoiceSayFraudBtn) {
-        phoneVoiceSayFraudBtn.addEventListener('click', async () => {
-            const acc = currentFlowAccId || 'ACC101';
-            speakVoiceScript('Alert! Fraud confirmed. Your card and account have been immediately blocked for your protection.');
-            addPhoneLog(`🚨 Voice confirmed: "NO, FRAUD!" -> Account BLOCKED.`, true);
-
-            await resolveAdminReview('FRAUD', 'Customer confirmed unauthorized fraud on phone call.', acc);
-            updatePhoneCardStatus('BLOCKED');
-
-            setTimeout(() => {
-                switchPhoneView('idle');
-            }, 2500);
-        });
-    }
-
-    // Connected Voice Call: End Call button
-    const phoneEndCallBtn = document.getElementById('phoneEndCallBtn');
-    if (phoneEndCallBtn) {
-        phoneEndCallBtn.addEventListener('click', () => {
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            switchPhoneView('idle');
-            addPhoneLog(`📞 Call ended.`);
-        });
-    }
-
-    // Phone Top SMS Banner: [1] Yes, Me (Safe)
-    const phoneSmsActionSelfBtn = document.getElementById('phoneSmsActionSelfBtn');
-    if (phoneSmsActionSelfBtn) {
-        phoneSmsActionSelfBtn.addEventListener('click', async () => {
-            const acc = currentFlowAccId || 'ACC101';
-            const tx = currentFlowTxId || 'TX10045';
-            try {
-                const res = await fetch(`/api/accounts/${acc}/sms-response`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ decision: 'SELF', transaction_id: tx })
-                });
-                const data = await res.json();
-                showToast(`✅ ${data.message}`, 'success');
-                addPhoneLog(`💬 Cardholder SMS Reply: [1] Yes, Done by Me -> Verified SAFE. Account ACTIVE.`);
-                updatePhoneCardStatus('ACTIVE');
-                hidePhoneSmsBanner();
-
-                const dBadge = document.getElementById(`account-status-badge-${acc}`) || document.getElementById('accountStatusBadge');
-                if (dBadge) {
-                    dBadge.innerText = 'ACTIVE';
-                    dBadge.className = 'risk-tag low';
-                }
-                const modal = document.getElementById('callWorkflowModal');
-                if (modal) modal.classList.remove('active');
-            } catch (err) {
-                showToast('Error recording SMS reply', 'danger');
-            }
-        });
-    }
-
-    // Phone Top SMS Banner: [2] Fraud (Block)
-    const phoneSmsActionOthersBtn = document.getElementById('phoneSmsActionOthersBtn');
-    if (phoneSmsActionOthersBtn) {
-        phoneSmsActionOthersBtn.addEventListener('click', async () => {
-            const acc = currentFlowAccId || 'ACC101';
-            const tx = currentFlowTxId || 'TX10045';
-            try {
-                const res = await fetch(`/api/accounts/${acc}/sms-response`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ decision: 'OTHERS', transaction_id: tx })
-                });
-                const data = await res.json();
-                showToast(`🚨 ${data.message}`, 'danger');
-                addPhoneLog(`🚨 Cardholder SMS Reply: [2] FRAUD (OTHERS) -> Account BLOCKED!`, true);
-                updatePhoneCardStatus('BLOCKED');
-                hidePhoneSmsBanner();
-
-                const dBadge = document.getElementById(`account-status-badge-${acc}`) || document.getElementById('accountStatusBadge');
-                if (dBadge) {
-                    dBadge.innerText = 'BLOCKED';
-                    dBadge.className = 'risk-tag critical';
-                }
-                const modal = document.getElementById('callWorkflowModal');
-                if (modal) modal.classList.remove('active');
-            } catch (err) {
-                showToast('Error recording SMS fraud report', 'danger');
-            }
-        });
-    }
 }

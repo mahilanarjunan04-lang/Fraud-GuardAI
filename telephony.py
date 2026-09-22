@@ -161,19 +161,19 @@ def send_real_sms(to_phone, message_text):
         if f_res.get('success'):
             return f_res
 
-    # 3. Graceful simulation fallback with clear instructions
-    safe_log(f">>> [SIMULATED SMS] Dispatched to {target_phone}: '{message_text}'")
+    # 3. If carrier credentials not configured
+    safe_log(f">>> [TELEPHONY NOTICE] Real SMS cannot reach physical phone {target_phone}: Carrier credentials not set.")
     return {
-        'success': True,
-        'mode': 'SIMULATED',
+        'success': False,
+        'mode': 'CREDENTIALS_REQUIRED',
         'to': target_phone,
-        'message': f"SMS delivered to {target_phone}. (Add Twilio/Fast2SMS keys in Settings to bridge cellular SMS networks)"
+        'message': f"⚠️ Real cellular SMS to physical phone {target_phone} requires Twilio credentials or Fast2SMS API key in Settings."
     }
 
 def make_real_call(to_phone, voice_text=None, transaction_details=None):
     """
-    Initiates an actual live outbound voice call to the user's phone via Twilio Voice API,
-    and plays real spoken audio through the PC speakers via pyttsx3.
+    Initiates an actual live outbound voice call to the person's physical phone via Twilio Voice API.
+    Does NOT simulate or display on the laptop screen.
     """
     creds = get_telephony_credentials()
     target_phone = normalize_phone_number(to_phone or creds['default_phone'])
@@ -191,10 +191,7 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
             f"Thank you."
         )
 
-    # 1. Play real local voice on computer speaker
-    speak_local_voice_async(voice_text)
-
-    # 2. Try Twilio outbound phone call
+    # Twilio outbound cellular phone call
     twiml_payload = f"""<Response>
     <Pause length="1"/>
     <Say voice="Polly.Aditi" language="en-IN">
@@ -215,14 +212,14 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
                 to=target_phone,
                 from_=creds['from_phone']
             )
-            safe_log(f">>> [TWILIO LIVE CALL] Call initiated to {target_phone} | Call SID: {call.sid}")
+            safe_log(f">>> [TWILIO LIVE CELLULAR CALL] Dispatched to {target_phone} | Call SID: {call.sid}")
             return {
                 'success': True,
                 'mode': 'LIVE_TWILIO',
                 'call_sid': call.sid,
                 'to': target_phone,
                 'status': call.status,
-                'message': f"📞 Real Voice Call initiated! Your phone {target_phone} should ring now (SID: {call.sid})."
+                'message': f"📞 Outbound cellular call initiated! Real phone {target_phone} is ringing now (SID: {call.sid})."
             }
         except Exception as e:
             safe_log(f">>> [TWILIO CALL ERROR] {e}")
@@ -231,16 +228,16 @@ def make_real_call(to_phone, voice_text=None, transaction_details=None):
                 'mode': 'LIVE_TWILIO_ERROR',
                 'error': str(e),
                 'to': target_phone,
-                'message': f"Twilio Call delivery failed: {str(e)}"
+                'message': f"Twilio cellular call delivery failed: {str(e)}"
             }
     else:
-        safe_log(f">>> [VOICE CALL SIMULATION + LOCAL AUDIO PLAYBACK] Dialing {target_phone}...")
+        safe_log(f">>> [TELEPHONY NOTICE] Cannot dial physical phone {target_phone}: Twilio credentials not configured.")
         return {
-            'success': True,
-            'mode': 'SIMULATED_WITH_AUDIO',
+            'success': False,
+            'mode': 'CREDENTIALS_REQUIRED',
             'to': target_phone,
             'script': voice_text,
-            'message': f"📞 Outbound Call ringing {target_phone} (Playing live Text-to-Speech audio on PC speakers!)."
+            'message': f"⚠️ Real cellular call to physical phone {target_phone} requires Twilio credentials. Enter your Twilio Account SID, Auth Token & Twilio Virtual Number in Settings to make your phone ring."
         }
 
 def send_real_otp(to_phone, otp_code):
