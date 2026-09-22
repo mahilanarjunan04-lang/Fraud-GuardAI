@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Sign In - FraudGuard AI Console{% endblock %}
+{% block title %}Sign In - FraudGuard AI Portal{% endblock %}
 
 {% block content %}
 <div class="login-page-container">
-    <!-- Left Hero Pane (Deep Navy / Purple Gradient) -->
+    <!-- Left Hero Pane (Emerald Green & Navy Theme) -->
     <div class="login-left-hero">
         <div>
             <div class="brand-container" style="margin-bottom: 2rem;">
@@ -16,78 +16,179 @@
                 Financial Transaction Anomaly Defense
             </h2>
             <p style="font-size: 1.05rem; color: #CBD5E1; line-height: 1.6; max-width: 480px;">
-                Access the security analyst control plane to monitor high-frequency transactions, inspect explainable ML anomaly indicators, and respond to threats.
+                Intelligent real-time transaction surveillance, multi-stage interactive call verification, and customer SMS decision protection.
             </p>
         </div>
 
-        <div style="background: rgba(16, 31, 66, 0.7); border: 1px solid rgba(96, 165, 250, 0.3); border-radius: 6px; padding: 1.5rem; max-width: 480px;">
+        <div style="background: rgba(16, 31, 66, 0.7); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 1.5rem; max-width: 480px;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                 <span style="display: inline-block; width: 10px; height: 10px; background: #10B981; border-radius: 2px;"></span>
-                <span style="font-size: 0.8rem; font-weight: 700; color: #60A5FA; text-transform: uppercase; letter-spacing: 0.05em;">SYSTEM HEALTH &bull; OPERATIONAL</span>
+                <span style="font-size: 0.8rem; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.05em;">SYSTEM HEALTH &bull; OPERATIONAL</span>
             </div>
-            <div style="font-size: 0.85rem; color: #E2E8F0;">
+            <div style="font-size: 0.85rem; color: #E2E8F0; line-height: 1.5;">
                 Active ML Engine: <strong>Isolation Forest (120 Estimators)</strong><br>
-                Rule Weight: <strong>60%</strong> &bull; ML Weight: <strong>40%</strong>
+                Transaction Ceiling: <strong>₹80,000 / Single Transaction</strong><br>
+                Verification Flow: <strong>2x Call &rarr; SMS Confirmation &rarr; Safe / Block</strong>
             </div>
         </div>
 
         <div style="font-size: 0.8rem; color: #94A3B8;">
-            Hackathon Production Portal &bull; Confidential Security Console
+            Hackathon Production Portal &bull; Multi-Factor Customer & Analyst Authentication
         </div>
     </div>
 
-    <!-- Right Form Pane (Clean Light Surface) -->
+    <!-- Right Form Pane -->
     <div class="login-right-form-pane">
         <div class="login-form-box">
-            <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 0.5rem; letter-spacing: -0.02em;">
-                Analyst Sign In
-            </h2>
-            <p style="font-size: 0.9rem; color: #64748B; margin-bottom: 1.75rem;">
-                Enter your authorized credentials to access transaction surveillance.
-            </p>
-
-            <!-- Demo Credentials Box -->
-            <div class="demo-credentials-box">
-                <div style="font-weight: 700; color: #1D4ED8; margin-bottom: 0.25rem;">
-                    <i class="icon-info"></i> Demo Credentials
-                </div>
-                <div style="color: #1E293B; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">
-                    Email: <strong>admin@fraudguard.ai</strong><br>
-                    Password: <strong>admin123</strong>
-                </div>
+            
+            <!-- Tab Switcher -->
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #E2E8F0; padding-bottom: 0.5rem;">
+                <button type="button" id="tabOtpBtn" class="btn btn-primary btn-sm" style="flex: 1; border-radius: 4px; font-weight: 700;">
+                    📱 Mobile / Account OTP
+                </button>
+                <button type="button" id="tabAnalystBtn" class="btn btn-outline btn-sm" style="flex: 1; border-radius: 4px; font-weight: 600;">
+                    👨‍💼 Analyst Login
+                </button>
             </div>
 
-            <form action="{{ url_for('login_view') }}" method="POST">
-                <div class="form-group">
-                    <label class="form-label" for="emailInput">Email Address</label>
-                    <input 
-                        type="email" 
-                        id="emailInput" 
-                        name="email" 
-                        class="form-input" 
-                        value="{{ email if email else 'admin@fraudguard.ai' }}" 
-                        required 
-                        autocomplete="email"
-                    >
+            <!-- ================= FORM 1: OTP LOGIN ================= -->
+            <div id="otpLoginForm">
+                <h2 style="font-size: 1.5rem; font-weight: 800; color: #0F172A; margin-bottom: 0.25rem; letter-spacing: -0.02em;">
+                    Mobile & Account Sign In
+                </h2>
+                <p style="font-size: 0.85rem; color: #64748B; margin-bottom: 1.25rem;">
+                    Enter your registered Mobile Number or Bank Account Number to receive a secure 6-digit OTP.
+                </p>
+
+                <!-- Demo helper box -->
+                <div class="demo-credentials-box" style="border-left-color: #10B981; background: #F0FDF4; margin-bottom: 1.25rem;">
+                    <div style="font-weight: 700; color: #065F46; margin-bottom: 0.25rem; font-size: 0.85rem;">
+                        <i class="icon-info"></i> Sample Verification Credentials
+                    </div>
+                    <div style="color: #1E293B; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.4;">
+                        Sample Mobile: <strong style="color: #047857;">8148534339</strong><br>
+                        Sample Account: <strong style="color: #1D4ED8;">ACC101</strong> (Aarav Sharma)<br>
+                        Default Test OTP: <strong style="color: #B45309;">123456</strong>
+                    </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 1.75rem;">
-                    <label class="form-label" for="passwordInput">Password</label>
-                    <input 
-                        type="password" 
-                        id="passwordInput" 
-                        name="password" 
-                        class="form-input" 
-                        value="admin123" 
-                        required 
-                        autocomplete="current-password"
-                    >
+                <!-- Live Simulated SMS Banner (Hidden by default, shown upon clicking Get OTP) -->
+                <div id="smsSimulationBanner" style="display: none; background: #071224; border: 1px solid #10B981; border-left: 4px solid #10B981; border-radius: 4px; padding: 0.85rem; margin-bottom: 1.25rem; animation: fadeIn 0.3s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <span style="font-size: 11px; font-weight: 700; color: #34D399; text-transform: uppercase;">
+                            📱 SIMULATED INCOMING SMS
+                        </span>
+                        <span style="font-size: 11px; color: #94A3B8;">Just now</span>
+                    </div>
+                    <div id="smsBannerText" style="font-size: 12px; color: #F1F5F9; line-height: 1.4;">
+                        FraudGuard AI OTP: <strong id="simulatedOtpCode" style="color: #34D399; font-size: 14px; letter-spacing: 2px;">482910</strong>
+                    </div>
+                    <button type="button" id="autoFillOtpBtn" class="btn btn-green btn-sm" style="margin-top: 0.5rem; width: 100%; padding: 4px 8px; font-size: 11px;">
+                        ⚡ Click to Auto-Fill OTP
+                    </button>
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
-                    Sign In to Dashboard &rarr;
-                </button>
-            </form>
+                <form action="{{ url_for('login_view') }}" method="POST" id="otpFormElement">
+                    <input type="hidden" name="auth_mode" value="otp">
+                    
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label class="form-label" for="identifierInput">
+                            Mobile Number or Account Number
+                        </label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input 
+                                type="text" 
+                                id="identifierInput" 
+                                name="identifier" 
+                                class="form-input" 
+                                placeholder="e.g. 8148534339 or ACC101" 
+                                value="{{ identifier if identifier else '8148534339' }}" 
+                                required 
+                                style="flex: 1;"
+                            >
+                            <button type="button" id="sendOtpBtn" class="btn btn-primary" style="white-space: nowrap; font-size: 0.85rem; padding: 0 0.85rem;">
+                                Get OTP &rarr;
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label class="form-label" for="otpInput">
+                            6-Digit Verification OTP
+                        </label>
+                        <input 
+                            type="text" 
+                            id="otpInput" 
+                            name="otp_code" 
+                            class="form-input" 
+                            placeholder="Enter 6-digit code (e.g. 123456)" 
+                            maxlength="6" 
+                            required 
+                            autocomplete="one-time-code"
+                            style="letter-spacing: 4px; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; text-align: center;"
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-green" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
+                        <i class="icon-shield-check"></i> Verify OTP & Sign In &rarr;
+                    </button>
+                </form>
+            </div>
+
+            <!-- ================= FORM 2: ANALYST EMAIL LOGIN ================= -->
+            <div id="analystLoginForm" style="display: none;">
+                <h2 style="font-size: 1.5rem; font-weight: 800; color: #0F172A; margin-bottom: 0.25rem; letter-spacing: -0.02em;">
+                    Security Analyst Sign In
+                </h2>
+                <p style="font-size: 0.85rem; color: #64748B; margin-bottom: 1.25rem;">
+                    Enter your credentials to access the transaction surveillance control plane.
+                </p>
+
+                <!-- Demo Credentials Box -->
+                <div class="demo-credentials-box" style="margin-bottom: 1.25rem;">
+                    <div style="font-weight: 700; color: #1D4ED8; margin-bottom: 0.25rem; font-size: 0.85rem;">
+                        <i class="icon-info"></i> Analyst Demo Credentials
+                    </div>
+                    <div style="color: #1E293B; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">
+                        Email: <strong>admin@fraudguard.ai</strong><br>
+                        Password: <strong>admin123</strong>
+                    </div>
+                </div>
+
+                <form action="{{ url_for('login_view') }}" method="POST">
+                    <input type="hidden" name="auth_mode" value="analyst">
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label class="form-label" for="emailInput">Email Address</label>
+                        <input 
+                            type="email" 
+                            id="emailInput" 
+                            name="email" 
+                            class="form-input" 
+                            value="admin@fraudguard.ai" 
+                            required 
+                            autocomplete="email"
+                        >
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label class="form-label" for="passwordInput">Password</label>
+                        <input 
+                            type="password" 
+                            id="passwordInput" 
+                            name="password" 
+                            class="form-input" 
+                            value="admin123" 
+                            required 
+                            autocomplete="current-password"
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 0.95rem;">
+                        Sign In as Investigator &rarr;
+                    </button>
+                </form>
+            </div>
 
             <div style="margin-top: 1.5rem; text-align: center;">
                 <a href="{{ url_for('landing_page') }}" style="font-size: 0.85rem; color: #64748B; text-decoration: none;">
@@ -97,4 +198,76 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabOtpBtn = document.getElementById('tabOtpBtn');
+    const tabAnalystBtn = document.getElementById('tabAnalystBtn');
+    const otpLoginForm = document.getElementById('otpLoginForm');
+    const analystLoginForm = document.getElementById('analystLoginForm');
+    const sendOtpBtn = document.getElementById('sendOtpBtn');
+    const identifierInput = document.getElementById('identifierInput');
+    const otpInput = document.getElementById('otpInput');
+    const smsBanner = document.getElementById('smsSimulationBanner');
+    const simulatedOtpCode = document.getElementById('simulatedOtpCode');
+    const autoFillBtn = document.getElementById('autoFillOtpBtn');
+
+    // Tab switching
+    tabOtpBtn.addEventListener('click', function() {
+        tabOtpBtn.className = 'btn btn-primary btn-sm';
+        tabAnalystBtn.className = 'btn btn-outline btn-sm';
+        otpLoginForm.style.display = 'block';
+        analystLoginForm.style.display = 'none';
+    });
+
+    tabAnalystBtn.addEventListener('click', function() {
+        tabAnalystBtn.className = 'btn btn-primary btn-sm';
+        tabOtpBtn.className = 'btn btn-outline btn-sm';
+        otpLoginForm.style.display = 'none';
+        analystLoginForm.style.display = 'block';
+    });
+
+    // Send OTP handler
+    sendOtpBtn.addEventListener('click', async function() {
+        const identifier = identifierInput.value.trim() || '8148534339';
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.innerHTML = 'Sending...';
+
+        try {
+            const resp = await fetch('/api/auth/send-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: identifier })
+            });
+            const data = await resp.json();
+
+            if (data.success) {
+                simulatedOtpCode.textContent = data.otp;
+                smsBanner.style.display = 'block';
+                sendOtpBtn.innerHTML = 'Resend OTP';
+                sendOtpBtn.disabled = false;
+                otpInput.focus();
+            } else {
+                alert(data.message || 'Failed to send OTP.');
+                sendOtpBtn.innerHTML = 'Get OTP &rarr;';
+                sendOtpBtn.disabled = false;
+            }
+        } catch (e) {
+            console.error(e);
+            // Fallback demo OTP
+            simulatedOtpCode.textContent = '123456';
+            smsBanner.style.display = 'block';
+            sendOtpBtn.innerHTML = 'Get OTP &rarr;';
+            sendOtpBtn.disabled = false;
+        }
+    });
+
+    // Auto-fill OTP
+    if (autoFillBtn) {
+        autoFillBtn.addEventListener('click', function() {
+            otpInput.value = simulatedOtpCode.textContent.trim();
+        });
+    }
+});
+</script>
 {% endblock %}

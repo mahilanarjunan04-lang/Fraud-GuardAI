@@ -71,10 +71,10 @@
         </div>
 
         <!-- Flowchart Visual Steps -->
-        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; align-items: center; text-align: center;">
+        <div style="display: grid; grid-template-columns: repeat(9, 1fr); gap: 0.5rem; align-items: center; text-align: center;">
             <div style="background: #08142A; border: 1px solid #162C54; border-radius: 4px; padding: 0.75rem 0.5rem;">
                 <div style="font-size: 11px; font-weight: 700; color: #94A3B8;">01. EVENT</div>
-                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">Transaction</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">Limit: ₹80,000</div>
             </div>
 
             <div style="color: #10B981; font-weight: 800; font-size: 14px;">&rarr;</div>
@@ -87,21 +87,28 @@
             <div style="color: #10B981; font-weight: 800; font-size: 14px;">&rarr;</div>
 
             <div style="background: #08142A; border: 1px solid #38BDF8; border-radius: 4px; padding: 0.75rem 0.5rem;">
-                <div style="font-size: 11px; font-weight: 700; color: #38BDF8;">03. NOTIFY</div>
-                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">📱 SMS &bull; 📞 Call (1/2)</div>
+                <div style="font-size: 11px; font-weight: 700; color: #38BDF8;">03. 2x CALLS</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">📞 Attempt 1 &rarr; 2</div>
             </div>
 
             <div style="color: #10B981; font-weight: 800; font-size: 14px;">&rarr;</div>
 
             <div style="background: #08142A; border: 1px solid #F59E0B; border-radius: 4px; padding: 0.75rem 0.5rem;">
-                <div style="font-size: 11px; font-weight: 700; color: #FCD34D;">04. FAIL-SAFE</div>
-                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">🔒 Account Hold</div>
+                <div style="font-size: 11px; font-weight: 700; color: #FCD34D;">04. SMS QUERY</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">📱 Self vs Others</div>
+            </div>
+
+            <div style="color: #10B981; font-weight: 800; font-size: 14px;">&rarr;</div>
+
+            <div style="background: #08142A; border: 1px solid #10B981; border-radius: 4px; padding: 0.75rem 0.5rem;">
+                <div style="font-size: 11px; font-weight: 700; color: #34D399;">05. ACTION</div>
+                <div style="font-size: 12px; font-weight: 700; color: #FFF; margin-top: 2px;">Safe / Block</div>
             </div>
         </div>
 
         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #162C54; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #CBD5E1;">
-            <span><strong>Decision Tree:</strong> Attended &rarr; Verify (Safe / Block) | Missed (2x) &rarr; 🔒 Account Hold &rarr; 👨‍💼 Admin Review &rarr; (Unhold / Block)</span>
-            <span style="color: #34D399; font-weight: 600;">Zero Fund Drainage Guarantee</span>
+            <span><strong>Decision Tree:</strong> 2x Calls (Attended &rarr; Verify) | Missed (2x) &rarr; 📱 SMS Query (Self &rarr; SAFE / Others &rarr; BLOCK ACCOUNT) | Timeout &rarr; 👨‍💼 Admin Review</span>
+            <span style="color: #34D399; font-weight: 600;">Enforced Single Tx Ceiling: ₹80,000</span>
         </div>
     </div>
 
@@ -422,7 +429,7 @@
 
             <div style="display: flex; gap: 1rem;">
                 <button id="flowVerifySafeBtn" class="btn btn-green" style="flex: 1;">
-                    <i class="icon-shield-check"></i> [1] "YES, Authorized" &rarr; UNHOLD
+                    <i class="icon-shield-check"></i> [1] "YES, Authorized" &rarr; SAFE
                 </button>
                 <button id="flowVerifyFraudBtn" class="btn btn-danger" style="flex: 1;">
                     <i class="icon-shield-x"></i> [2] "NO, FRAUD!" &rarr; BLOCK ACCOUNT
@@ -430,14 +437,53 @@
             </div>
         </div>
 
-        <!-- Stage C: Not Attended 2x -> Account Hold -> Admin Review -->
+        <!-- Stage C: SMS Confirmation Decision (When 2 calls are missed) -->
+        <div id="flowSmsDecisionPane" style="display: none; padding: 1rem 0;">
+            <div style="background: #08142A; border: 1px solid #F59E0B; border-left: 4px solid #F59E0B; border-radius: 4px; padding: 1.25rem; margin-bottom: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 11px; font-weight: 700; color: #FCD34D; text-transform: uppercase; letter-spacing: 0.05em;">
+                        📱 URGENT SMS VERIFICATION MESSAGE
+                    </span>
+                    <span id="flowSmsRecipientPhone" style="font-size: 12px; color: #34D399; font-family: 'JetBrains Mono', monospace; font-weight: 700;">
+                        +91 8148534339
+                    </span>
+                </div>
+                <p id="flowSmsContentText" style="font-size: 13px; color: #F1F5F9; line-height: 1.5; margin: 0;">
+                    Bank Security Alert: A transaction of ₹75,000 at Dubai was requested on your account. Was this transaction done by you or others?
+                </p>
+            </div>
+
+            <div style="font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 0.75rem; text-align: center;">
+                SELECT CARDHOLDER'S SMS RESPONSE:
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                <button id="flowSmsSelfSafeBtn" class="btn btn-green" style="width: 100%; padding: 0.85rem; font-size: 13px; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="icon-shield-check"></i> <strong>[1] "YES, Done by Me (Self)"</strong> &mdash; I authorized this</span>
+                    <span class="risk-tag low" style="background: rgba(16, 185, 129, 0.2); color: #34D399;">SAFE (DO NOT BLOCK)</span>
+                </button>
+
+                <button id="flowSmsOthersFraudBtn" class="btn btn-danger" style="width: 100%; padding: 0.85rem; font-size: 13px; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="icon-shield-x"></i> <strong>[2] "NO, Not Done by Me (Others / Fraud)"</strong> &mdash; Unauthorized</span>
+                    <span class="risk-tag critical" style="background: rgba(220, 38, 38, 0.2); color: #F87171;">BLOCK ACCOUNT IMMEDIATELY</span>
+                </button>
+            </div>
+
+            <div style="text-align: center;">
+                <button id="flowSmsNoResponseBtn" class="btn btn-outline btn-sm" style="font-size: 11px; color: #94A3B8;">
+                    ⏳ No Response after Timeout &rarr; Place on Account Hold for Admin Review
+                </button>
+            </div>
+        </div>
+
+        <!-- Stage D: Not Attended 2x / Unanswered -> Account Hold -> Admin Review -->
         <div id="flowHoldReviewPane" style="display: none; padding: 1rem 0;">
             <div style="background: rgba(220, 38, 38, 0.15); border: 1px solid #DC2626; border-left: 4px solid #DC2626; border-radius: 4px; padding: 1.25rem; margin-bottom: 1.5rem;">
                 <div style="font-weight: 800; color: #F87171; font-size: 1rem;">
                     🔒 AUTOMATIC ACCOUNT HOLD ACTIVATED
                 </div>
                 <div id="flowHoldReason" style="font-size: 12px; color: #FECACA; margin-top: 4px;">
-                    Customer missed both call verification attempts. Account is placed on security hold to prevent financial loss.
+                    Customer missed both call verification attempts and SMS was unanswered. Account is placed on security hold to prevent financial loss.
                 </div>
             </div>
 

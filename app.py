@@ -13,11 +13,11 @@ from werkzeug.security import check_password_hash
 from database import (
     init_db, get_user_by_email, get_dashboard_metrics,
     get_all_transactions, get_transaction_by_id, get_all_accounts,
-    get_account_profile, get_transactions_for_account, get_all_alerts,
-    update_alert_status, get_system_settings, update_system_settings,
+    get_account_profile, get_account_by_identifier, get_transactions_for_account,
+    get_all_alerts, update_alert_status, get_system_settings, update_system_settings,
     get_db_connection, set_account_blocked, set_account_hold, set_account_unhold,
     set_account_admin_review, increment_call_attempt, log_customer_communication,
-    get_communications_for_account
+    get_communications_for_account, generate_otp, verify_otp_code, process_sms_decision
 )
 from fraud_detection import analyze_transaction
 from ml_model import get_or_load_model
@@ -46,22 +46,46 @@ def landing_page():
 @app.route('/login', methods=['GET', 'POST'])
 def login_view():
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
-        password = request.form.get('password', '').strip()
+        auth_mode = request.form.get('auth_mode', 'otp')
         
-        user = get_user_by_email(email)
-        if user and check_password_hash(user['password_hash'], password):
-            session['user_id'] = user['id']
-            session['user_email'] = user['email']
-            session['user_name'] = user['name']
-            session['user_role'] = user['role']
-            flash('Signed in successfully.', 'success')
-            return redirect(url_for('dashboard_view'))
-        else:
-            flash('Invalid email or password. Use admin@fraudguard.ai / admin123 for demo.', 'danger')
-            return render_template('login.html', email=email)
+        if auth_mode == 'otp':
+            identifier = request.form.get('identifier', '').strip()
+            otp_code = request.form.get('otp_code', '').strip()
             
-    return render_template('login.html')
+            if not identifier or not otp_code:
+                flash('Please enter Account Number / Mobile Number and the 6-digit OTP.', 'warning')
+                return render_template('login.html', identifier=identifier, auth_mode='otp')
+                
+            is_valid, account = verify_otp_code(identifier, otp_code)
+            if is_valid and account:
+                session['user_id'] = account['account_id']
+                session['user_email'] = account.get('email', 'customer@bank.com')
+                session['user_name'] = account['holder_name']
+                session['user_role'] = 'Verified Customer'
+                session['user_account_id'] = account['account_id']
+                session['user_phone'] = account.get('phone_number', '+91 8148534339')
+                flash(f"Welcome back, {account['holder_name']}! Signed in via OTP verification.", 'success')
+                return redirect(url_for('dashboard_view'))
+            else:
+                flash('Invalid OTP code. Please enter the active 6-digit OTP sent to your phone (or 123456).', 'danger')
+                return render_template('login.html', identifier=identifier, auth_mode='otp')
+        else: # analyst email login
+            email = request.form.get('email', '').strip()
+            password = request.form.get('password', '').strip()
+            
+            user = get_user_by_email(email)
+            if user and check_password_hash(user['password_hash'], password):
+                session['user_id'] = user['id']
+                session['user_email'] = user['email']
+                session['user_name'] = user['name']
+                session['user_role'] = user['role']
+                flash('Signed in successfully as Lead Investigator.', 'success')
+                return redirect(url_for('dashboard_view'))
+            else:
+                flash('Invalid email or password. Use admin@fraudguard.ai / admin123 for demo.', 'danger')
+                return render_template('login.html', email=email, auth_mode='analyst')
+            
+    return render_template('login.html', identifier='8148534339', auth_mode='otp')
 
 @app.route('/logout')
 def logout_view():
@@ -217,13 +241,79 @@ def settings_view():
 # REST API: MULTI-STAGE USER CALL & ADMIN REVIEW WORKFLOW
 # ==========================================================
 
+# ==========================================================
+# REST API: OTP AUTHENTICATION & VERIFICATION
+# ==========================================================
+
+@app.route('/api/auth/send-otp', methods=['POST'])
+def api_send_otp():
+    """
+    Generates and returns 6-digit OTP for Account Number / Mobile Number.
+    """
+    data = request.get_json() or {}
+    identifier = data.get('identifier', '8148534339').strip()
+    
+    if not identifier:
+        return jsonify({'success': False, 'message': 'Please provide an Account Number or Mobile Number.'}), 400
+        
+    otp_data = generate_otp(identifier)
+    return jsonify({
+        'success': True,
+        'message': f"OTP successfully sent to registered mobile {otp_data['phone']}.",
+        'otp': otp_data['otp'],
+        'account_id': otp_data['account_id'],
+        'phone': otp_data['phone'],
+        'holder_name': otp_data['holder_name']
+    })
+
+@app.route('/api/auth/verify-otp', methods=['POST'])
+def api_verify_otp():
+    """
+    Verifies 6-digit OTP code and logs user in.
+    """
+    data = request.get_json() or {}
+    identifier = data.get('identifier', '').strip()
+    otp_code = data.get('otp_code', '').strip()
+    
+    if not identifier or not otp_code:
+        return jsonify({'success': False, 'message': 'Identifier and OTP code are required.'}), 400
+        
+    is_valid, account = verify_otp_code(identifier, otp_code)
+    if is_valid and account:
+        session['user_id'] = account['account_id']
+        session['user_email'] = account.get('email', 'customer@bank.com')
+        session['user_name'] = account['holder_name']
+        session['user_role'] = 'Verified Customer'
+        session['user_account_id'] = account['account_id']
+        session['user_phone'] = account.get('phone_number', '+91 8148534339')
+        return jsonify({
+            'success': True,
+            'message': 'OTP verification successful. Welcome to FraudGuard AI!',
+            'account': {
+                'account_id': account['account_id'],
+                'holder_name': account['holder_name'],
+                'phone': account.get('phone_number', '+91 8148534339'),
+                'avg_amount': account.get('avg_amount', 3200.0)
+            }
+        })
+    return jsonify({'success': False, 'message': 'Invalid OTP code. Please check your SMS or use 123456.'}), 401
+
+# ==========================================================
+# REST API: MULTI-STAGE USER CALL & SMS DECISION WORKFLOW
+# ==========================================================
+
 @app.route('/api/accounts/<account_id>/call-step', methods=['POST'])
 def api_call_workflow_step(account_id):
     """
-    Executes the exact flowchart step:
-    Call Attempt 1 -> Attended (YES) / Not Attended (NO)
-    If NO -> Retry Call (Attempt 2)
-    If NO again -> Automated ACCOUNT HOLD -> Queued for ADMIN REVIEW
+    Executes the complete flowchart:
+    Transaction -> AI High Risk -> User Notification -> Call User (Attempt 1)
+    -> YES: Verify (Safe / Block)
+    -> NO: Retry Call (Attempt 2)
+       -> YES: Verify (Safe / Block)
+       -> NO: Fallback to SMS Decision ("Was this done by you?")
+          -> YES (Done by Me / Self): SAFE (Account NOT blocked)
+          -> NO (Not Done by Me / Others): FRAUD (Account BLOCKED)
+          -> Timeout: ACCOUNT_HOLD -> Admin Review
     """
     data = request.get_json() or {}
     step = int(data.get('attempt', 1)) # 1 or 2
@@ -233,7 +323,7 @@ def api_call_workflow_step(account_id):
     location = data.get('location', 'Dubai')
 
     acc = get_account_profile(account_id)
-    phone = acc['phone_number'] if acc else '+91 98450 12345'
+    phone = acc['phone_number'] if acc else '+91 8148534339'
     name = acc['holder_name'] if acc else 'Cardholder'
 
     if outcome == 'NOT_ATTENDED':
@@ -251,18 +341,22 @@ def api_call_workflow_step(account_id):
                 'message': f"Call Attempt #1 to {phone} was unattended. Initiating Automated Retry Call (Attempt #2)..."
             })
         else: # step == 2
-            set_account_hold(account_id, reason=f"Customer call unattended on 2 consecutive attempts for ₹{amount} from {location}.")
-            set_account_admin_review(account_id)
+            # Trigger SMS Fallback Message to Customer
+            sms_prompt = (
+                f"🔴 Bank Security Alert: A transaction of ₹{amount} at {location} was requested on Account {account_id}. "
+                f"Was this transaction done by you? Reply [1: DONE BY ME] or [2: NOT DONE BY ME / FRAUD]."
+            )
             log_customer_communication(
-                account_id, tx_id, 'CALL_ATTEMPT_2', phone,
-                f"Automated Retry Call Attempt #2 was UNATTENDED. Account placed on AUTOMATIC ACCOUNT HOLD and queued for Admin Review.",
-                status='AUTO_HELD', response='ADMIN_REVIEW_QUEUED'
+                account_id, tx_id, 'SMS_ALERT', phone,
+                sms_prompt,
+                status='SMS_SENT_PENDING_RESPONSE', response='AWAITING_USER_DECISION'
             )
             return jsonify({
                 'success': True,
-                'next_step': 'ACCOUNT_HOLD',
-                'account_status': 'ACCOUNT_HOLD',
-                'message': f"🔒 Maximum call attempts (2/2) reached without customer attendance. Account {account_id} placed on AUTOMATIC ACCOUNT HOLD & escalated to ADMIN REVIEW!"
+                'next_step': 'SMS_DECISION',
+                'phone': phone,
+                'sms_text': sms_prompt,
+                'message': f"📱 Call Attempt #2 missed. Dispatched urgent SMS verification to {phone}: 'Was this transaction done by you or others?'"
             })
     else: # outcome == 'ATTENDED'
         log_customer_communication(
@@ -274,8 +368,27 @@ def api_call_workflow_step(account_id):
             'success': True,
             'next_step': 'VERIFY',
             'script': f"Hello {name}, this is FraudGuard AI security desk. We detected an unusual transaction of ₹{amount} from {location}. Did you authorize this?",
-            'message': f"Customer attended Call Attempt #{step}. Verification in progress."
+            'message': f"Customer attended Call Attempt #{step}. Interactive voice verification in progress."
         })
+
+@app.route('/api/accounts/<account_id>/sms-response', methods=['POST'])
+def api_sms_response(account_id):
+    """
+    Handles SMS decision from user:
+    - 'SELF': Done by me -> SAFE, account NOT blocked (remains ACTIVE).
+    - 'OTHERS': Not done by me / fraud -> FRAUD, account IMMEDIATELY BLOCKED.
+    """
+    data = request.get_json() or {}
+    decision = data.get('decision', 'SELF') # 'SELF' or 'OTHERS'
+    tx_id = data.get('transaction_id', 'TX10045')
+    
+    result = process_sms_decision(account_id, decision, tx_id)
+    return jsonify({
+        'success': True,
+        'action': result['action'],
+        'status': result['status'],
+        'message': result['message']
+    })
 
 @app.route('/api/accounts/<account_id>/admin-review', methods=['POST'])
 def api_admin_review_decision(account_id):
@@ -288,7 +401,7 @@ def api_admin_review_decision(account_id):
     tx_id = data.get('transaction_id', '')
 
     acc = get_account_profile(account_id)
-    phone = acc['phone_number'] if acc else '+91 98450 12345'
+    phone = acc['phone_number'] if acc else '+91 8148534339'
 
     if decision == 'SAFE':
         set_account_unhold(account_id)
@@ -337,7 +450,7 @@ def api_send_customer_message(account_id):
     location = data.get('location', 'Unknown')
     
     acc = get_account_profile(account_id)
-    phone = acc['phone_number'] if acc else '+91 98450 12345'
+    phone = acc['phone_number'] if acc else '+91 8148534339'
     
     msg = f"📱 FraudGuard Notification: Unusual transaction of ₹{amount} detected from {location} on account {account_id}. Security call incoming. If unauthorized, reply 'HOLD'."
     

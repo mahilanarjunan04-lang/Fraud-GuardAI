@@ -16,7 +16,6 @@ def is_unusual_time(time_str):
     # Check 12-hour AM/PM format
     if 'AM' in t_str or 'PM' in t_str:
         try:
-            # e.g., '02:30 AM', '11:45 PM'
             time_parts = t_str.replace(':', ' ').split()
             hour = int(time_parts[0])
             minute = int(time_parts[1]) if len(time_parts) > 2 else 0
@@ -25,7 +24,7 @@ def is_unusual_time(time_str):
                 hour += 12
             elif meridiem == 'AM' and hour == 12:
                 hour = 0
-            # Late night / early morning check: 11 PM (23) to 5 AM (5)
+            # Late night / early morning check: 11 PM (23) to 5:30 AM (5)
             if hour >= 23 or hour < 6:
                 return True
         except Exception:
@@ -43,10 +42,12 @@ def is_unusual_time(time_str):
 
 def analyze_transaction(tx_data, account_profile=None):
     """
-    Runs full hybrid fraud evaluation (Rule Engine + Scikit-Learn Isolation Forest + Explainable AI)
+    Runs full hybrid fraud evaluation against the bank account and value:
+    - ₹80,000 Transaction Limit Enforced
+    - Rule Engine + Scikit-Learn Isolation Forest + Explainable AI
     """
     amount = float(tx_data.get('amount', 0.0))
-    account_id = tx_data.get('account_id', 'ACC100')
+    account_id = tx_data.get('account_id', 'ACC101')
     location = str(tx_data.get('location', 'Chennai')).strip()
     time_str = str(tx_data.get('time', tx_data.get('time_str', '12:00 PM'))).strip()
     device = str(tx_data.get('device', 'Known Mobile Device')).strip()
@@ -59,7 +60,7 @@ def analyze_transaction(tx_data, account_profile=None):
     # Defaults if profile not found
     if account_profile:
         avg_amount = float(account_profile['avg_amount'])
-        normal_locations = [l.strip().lower() for l in account_profile['normal_locations'].split(',')]
+        normal_locations = [l.strip().lower() for l in str(account_profile['normal_locations']).split(',')]
         normal_hours = account_profile['normal_hours']
     else:
         avg_amount = float(tx_data.get('avg_amount', 2500.0))
@@ -69,15 +70,28 @@ def analyze_transaction(tx_data, account_profile=None):
     if avg_amount <= 0:
         avg_amount = 2500.0
 
+    # System settings
+    settings = get_system_settings()
+    transaction_limit = float(settings.get('transaction_limit', 80000.0))
+    rule_weight = float(settings.get('rule_weight', 0.6))
+    ml_weight = float(settings.get('ml_weight', 0.4))
+
     # Rule calculations
     rule_score = 0
     reasons = []
 
-    # 1. Amount Anomaly (+25)
+    # 1. Transaction Limit ₹80,000 Check (+30 / +35)
     amount_ratio = amount / avg_amount
-    is_amount_anomaly = False
-    if amount_ratio >= 3.0 or amount > 50000:
-        is_amount_anomaly = True
+    if amount > transaction_limit:
+        rule_score += 35
+        reasons.append({
+            'code': '01',
+            'title': f'Exceeds ₹{transaction_limit:,.0f} Single Transaction Limit',
+            'description': f"Transaction amount of ₹{amount:,.2f} exceeds the enforced security ceiling of ₹{transaction_limit:,.2f} for this bank account.",
+            'severity': 'CRITICAL',
+            'icon': 'alert-triangle'
+        })
+    elif amount_ratio >= 3.0 or amount > 50000:
         rule_score += 25
         reasons.append({
             'code': '01',
@@ -151,17 +165,12 @@ def analyze_transaction(tx_data, account_profile=None):
     
     ml_score = predict_anomaly_score(ml_features)
 
-    # System settings weights
-    settings = get_system_settings()
-    rule_weight = float(settings.get('rule_weight', 0.6))
-    ml_weight = float(settings.get('ml_weight', 0.4))
-
     # Calculate final hybrid risk score
     raw_final = (rule_weight * rule_score) + (ml_weight * ml_score)
     final_risk_score = int(round(max(0, min(100, raw_final))))
 
     # Risk level classification
-    if final_risk_score >= 81:
+    if final_risk_score >= 81 or amount > transaction_limit:
         risk_level = 'CRITICAL'
         status = 'CRITICAL'
     elif final_risk_score >= 61:
@@ -174,7 +183,7 @@ def analyze_transaction(tx_data, account_profile=None):
         risk_level = 'LOW'
         status = 'NORMAL'
 
-    # If no reasons were triggered but score is somehow non-zero, provide baseline summary
+    # If no reasons were triggered but score is low, provide baseline summary
     if not reasons and final_risk_score <= 30:
         reasons.append({
             'code': '00',
@@ -191,6 +200,7 @@ def analyze_transaction(tx_data, account_profile=None):
         'account_id': account_id,
         'amount': amount,
         'avg_amount': avg_amount,
+        'transaction_limit': transaction_limit,
         'amount_ratio': round(amount_ratio, 2),
         'location': location,
         'time': time_str,

@@ -286,6 +286,9 @@ function initCallWorkflowModal() {
                     currentFlowAttempt = 2;
                     showToast('Call #1 was unattended. Retrying call (Attempt #2)...', 'warning');
                     startCallAttempt(2);
+                } else if (data.next_step === 'SMS_DECISION') {
+                    showToast('Call #2 missed. Dispatched urgent SMS verification query to cardholder.', 'warning');
+                    renderSmsDecisionStage(data);
                 } else if (data.next_step === 'ACCOUNT_HOLD') {
                     showToast(data.message, 'danger');
                     renderAccountHoldStage(data);
@@ -313,12 +316,78 @@ function initCallWorkflowModal() {
             if (modal) modal.classList.remove('active');
         });
     }
+
+    // SMS Decision choices (when 2 calls are missed)
+    const smsSelfSafeBtn = document.getElementById('flowSmsSelfSafeBtn');
+    const smsOthersFraudBtn = document.getElementById('flowSmsOthersFraudBtn');
+    const smsNoResponseBtn = document.getElementById('flowSmsNoResponseBtn');
+
+    if (smsSelfSafeBtn) {
+        smsSelfSafeBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch(`/api/accounts/${currentFlowAccId}/sms-response`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        decision: 'SELF',
+                        transaction_id: currentFlowTxId
+                    })
+                });
+                const data = await res.json();
+                showToast(`✅ ${data.message}`, 'success');
+                
+                const badge = document.getElementById(`account-status-badge-${currentFlowAccId}`) || document.getElementById('accountStatusBadge');
+                if (badge) {
+                    badge.innerText = 'ACTIVE';
+                    badge.className = 'risk-tag low';
+                }
+                if (modal) modal.classList.remove('active');
+            } catch (err) {
+                showToast('Error recording SMS verification', 'danger');
+            }
+        });
+    }
+
+    if (smsOthersFraudBtn) {
+        smsOthersFraudBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch(`/api/accounts/${currentFlowAccId}/sms-response`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        decision: 'OTHERS',
+                        transaction_id: currentFlowTxId
+                    })
+                });
+                const data = await res.json();
+                showToast(`🚨 ${data.message}`, 'danger');
+                
+                const badge = document.getElementById(`account-status-badge-${currentFlowAccId}`) || document.getElementById('accountStatusBadge');
+                if (badge) {
+                    badge.innerText = 'BLOCKED';
+                    badge.className = 'risk-tag critical';
+                }
+                if (modal) modal.classList.remove('active');
+            } catch (err) {
+                showToast('Error recording SMS fraud report', 'danger');
+            }
+        });
+    }
+
+    if (smsNoResponseBtn) {
+        smsNoResponseBtn.addEventListener('click', () => {
+            renderAccountHoldStage({
+                message: `SMS was unanswered by cardholder after timeout. Account ${currentFlowAccId} is placed on AUTOMATIC ACCOUNT HOLD and queued for Admin Review.`
+            });
+        });
+    }
 }
 
 function startCallAttempt(attemptNum) {
     document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 04: CALL USER (ATTEMPT ${attemptNum}/2)`;
     document.getElementById('flowCallingPane').style.display = 'block';
     document.getElementById('flowVerifyPane').style.display = 'none';
+    if (document.getElementById('flowSmsDecisionPane')) document.getElementById('flowSmsDecisionPane').style.display = 'none';
     document.getElementById('flowHoldReviewPane').style.display = 'none';
 
     document.getElementById('flowCallAttemptTitle').innerText = attemptNum === 1 ? '📞 Outbound Security Call Attempt #1' : '📞 Retry Security Call Attempt #2';
@@ -329,15 +398,33 @@ function renderVerificationStage(script) {
     document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 05: CALL ATTENDED → CARDHOLDER VERIFICATION`;
     document.getElementById('flowCallingPane').style.display = 'none';
     document.getElementById('flowVerifyPane').style.display = 'block';
+    if (document.getElementById('flowSmsDecisionPane')) document.getElementById('flowSmsDecisionPane').style.display = 'none';
     document.getElementById('flowHoldReviewPane').style.display = 'none';
 
     document.getElementById('flowTranscriptText').innerText = script || `Hello, this is FraudGuard AI security desk. We detected an unusual transaction of ₹${currentFlowAmount} from ${currentFlowLocation}. Did you authorize this?`;
 }
 
-function renderAccountHoldStage(data) {
-    document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 06: CALL NOT ATTENDED (2/2) → 🔒 ACCOUNT HOLD & ADMIN REVIEW`;
+function renderSmsDecisionStage(data) {
+    document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 06: CALLS MISSED (2/2) → 📱 SMS VERIFICATION DECISION`;
     document.getElementById('flowCallingPane').style.display = 'none';
     document.getElementById('flowVerifyPane').style.display = 'none';
+    if (document.getElementById('flowSmsDecisionPane')) {
+        document.getElementById('flowSmsDecisionPane').style.display = 'block';
+        if (document.getElementById('flowSmsRecipientPhone')) {
+            document.getElementById('flowSmsRecipientPhone').innerText = data.phone || '+91 8148534339';
+        }
+        if (document.getElementById('flowSmsContentText')) {
+            document.getElementById('flowSmsContentText').innerText = data.sms_text || `Bank Alert: A transaction of ₹${currentFlowAmount} at ${currentFlowLocation} was requested on Account ${currentFlowAccId}. Was this transaction done by you or others?`;
+        }
+    }
+    document.getElementById('flowHoldReviewPane').style.display = 'none';
+}
+
+function renderAccountHoldStage(data) {
+    document.getElementById('flowStepKicker').innerText = `WORKFLOW STEP 07: UNANSWERED → 🔒 ACCOUNT HOLD & ADMIN REVIEW`;
+    document.getElementById('flowCallingPane').style.display = 'none';
+    document.getElementById('flowVerifyPane').style.display = 'none';
+    if (document.getElementById('flowSmsDecisionPane')) document.getElementById('flowSmsDecisionPane').style.display = 'none';
     document.getElementById('flowHoldReviewPane').style.display = 'block';
 
     document.getElementById('flowHoldAccId').innerText = currentFlowAccId;

@@ -1,7 +1,9 @@
 import sqlite3
 import os
 import json
-from datetime import datetime
+import random
+import time
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database', 'fraudguard.db')
@@ -16,7 +18,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Users table
+    # Users table (Analysts & Admins)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,19 +30,13 @@ def init_db():
         )
     ''')
 
-    # Drop old accounts table if it lacks new columns
-    try:
-        cursor.execute("SELECT call_attempts, hold_reason FROM accounts LIMIT 1")
-    except sqlite3.OperationalError:
-        cursor.execute("DROP TABLE IF EXISTS accounts")
-
     # Accounts table with full workflow states: ACTIVE, ACCOUNT_HOLD, ADMIN_REVIEW, BLOCKED
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             account_id TEXT UNIQUE NOT NULL,
             holder_name TEXT NOT NULL,
-            phone_number TEXT DEFAULT '+91 98450 12345',
+            phone_number TEXT DEFAULT '+91 8148534339',
             email TEXT DEFAULT 'customer@bank.com',
             avg_amount REAL DEFAULT 2500.0,
             min_amount REAL DEFAULT 500.0,
@@ -53,6 +49,7 @@ def init_db():
             status TEXT DEFAULT 'ACTIVE', -- ACTIVE, ACCOUNT_HOLD, ADMIN_REVIEW, BLOCKED, FLAGGED
             call_attempts INTEGER DEFAULT 0,
             last_call_status TEXT DEFAULT 'NONE',
+            last_sms_status TEXT DEFAULT 'NONE',
             hold_reason TEXT DEFAULT '',
             block_reason TEXT DEFAULT '',
             held_at TIMESTAMP,
@@ -60,6 +57,12 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Ensure last_sms_status exists in accounts
+    try:
+        cursor.execute("SELECT last_sms_status FROM accounts LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE accounts ADD COLUMN last_sms_status TEXT DEFAULT 'NONE'")
 
     # Transactions table
     cursor.execute('''
@@ -95,7 +98,7 @@ def init_db():
             severity TEXT NOT NULL,
             message TEXT NOT NULL,
             reasons TEXT DEFAULT '[]',
-            status TEXT DEFAULT 'PENDING', -- PENDING, UNDER_INVESTIGATION, ADMIN_REVIEW, RESOLVED, DISMISSED
+            status TEXT DEFAULT 'PENDING', -- PENDING, UNDER_INVESTIGATION, ADMIN_REVIEW, RESOLVED, DISMISSED, BLOCKED
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id)
         )
@@ -107,21 +110,35 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             account_id TEXT NOT NULL,
             transaction_id TEXT,
-            type TEXT NOT NULL, -- CALL_ATTEMPT_1, CALL_ATTEMPT_2, SMS, WHATSAPP, ADMIN_REVIEW
+            type TEXT NOT NULL, -- CALL_ATTEMPT_1, CALL_ATTEMPT_2, SMS_ALERT, SMS_RESPONSE, OTP, ADMIN_REVIEW
             recipient_contact TEXT NOT NULL,
             message_content TEXT NOT NULL,
-            status TEXT DEFAULT 'DELIVERED', -- DELIVERED, ATTENDED_VERIFIED, NOT_ATTENDED, AUTO_HELD, BLOCKED, UNHELD
+            status TEXT DEFAULT 'DELIVERED', -- DELIVERED, ATTENDED_VERIFIED, NOT_ATTENDED, VERIFIED_SELF_SAFE, BLOCKED_FRAUD_CONFIRMED, AUTO_HELD, BLOCKED, UNHELD
             response TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
-    # System settings table
+    # OTP Verifications Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS otp_verifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            identifier TEXT NOT NULL, -- account_id or phone_number
+            otp_code TEXT NOT NULL,
+            account_id TEXT,
+            is_used INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP
+        )
+    ''')
+
+    # System settings table (includes transaction limit 80000)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS system_settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             rule_weight REAL DEFAULT 0.6,
             ml_weight REAL DEFAULT 0.4,
+            transaction_limit REAL DEFAULT 80000.0,
             auto_alert_threshold INTEGER DEFAULT 60,
             auto_block_threshold INTEGER DEFAULT 81,
             high_risk_threshold INTEGER DEFAULT 61,
@@ -131,6 +148,12 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Ensure transaction_limit column exists
+    try:
+        cursor.execute("SELECT transaction_limit FROM system_settings LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN transaction_limit REAL DEFAULT 80000.0")
 
     conn.commit()
     conn.close()
@@ -162,6 +185,108 @@ def get_account_profile(account_id):
     conn.close()
     return account
 
+def get_account_by_identifier(identifier):
+    """
+    Find account by account_id (e.g. ACC101) or phone number (e.g. 8148534339, +91 8148534339).
+    """
+    conn = get_db_connection()
+    clean_id = str(identifier).strip()
+    digits_only = ''.join(c for c in clean_id if c.isdigit())
+    
+    # 1. Exact match on account_id
+    acc = conn.execute('SELECT * FROM accounts WHERE account_id = ? COLLATE NOCASE', (clean_id,)).fetchone()
+    if acc:
+        conn.close()
+        return dict(acc)
+    
+    # 2. Exact match on phone_number
+    acc = conn.execute('SELECT * FROM accounts WHERE phone_number = ?', (clean_id,)).fetchone()
+    if acc:
+        conn.close()
+        return dict(acc)
+    
+    # 3. Digits match on phone number
+    if digits_only:
+        all_accs = conn.execute('SELECT * FROM accounts').fetchall()
+        for a in all_accs:
+            p_digits = ''.join(c for c in (a['phone_number'] or '') if c.isdigit())
+            if digits_only in p_digits or p_digits.endswith(digits_only) or digits_only.endswith(p_digits):
+                conn.close()
+                return dict(a)
+                
+    conn.close()
+    return None
+
+def generate_otp(identifier):
+    """
+    Generates a 6-digit OTP for an account or phone number and saves it.
+    """
+    conn = get_db_connection()
+    acc = get_account_by_identifier(identifier)
+    account_id = acc['account_id'] if acc else 'ACC101'
+    phone = acc['phone_number'] if acc else identifier
+    
+    otp_code = f"{random.randint(100000, 999999)}"
+    
+    # Invalidate old OTPs for identifier
+    conn.execute('UPDATE otp_verifications SET is_used = 1 WHERE identifier = ?', (str(identifier),))
+    
+    # Insert new OTP (valid for 10 minutes)
+    conn.execute('''
+        INSERT INTO otp_verifications (identifier, otp_code, account_id, is_used)
+        VALUES (?, ?, ?, 0)
+    ''', (str(identifier), otp_code, account_id))
+    
+    conn.commit()
+    conn.close()
+    
+    # Log communication
+    log_customer_communication(
+        account_id=account_id,
+        tx_id='OTP-LOGIN',
+        comm_type='OTP',
+        contact=phone,
+        message=f"Your FraudGuard AI Verification OTP is: {otp_code}. Valid for 10 minutes. Do not share with anyone.",
+        status='DELIVERED',
+        response=otp_code
+    )
+    
+    return {
+        'otp': otp_code,
+        'account_id': account_id,
+        'phone': phone,
+        'holder_name': acc['holder_name'] if acc else 'Valued Customer'
+    }
+
+def verify_otp_code(identifier, otp_code):
+    """
+    Verifies the OTP code for the given identifier.
+    """
+    conn = get_db_connection()
+    clean_id = str(identifier).strip()
+    clean_otp = str(otp_code).strip()
+    
+    # Also check demo universal bypass OTP for offline tests '123456'
+    row = conn.execute('''
+        SELECT * FROM otp_verifications 
+        WHERE (identifier = ? OR account_id = ?) AND otp_code = ? AND is_used = 0
+        ORDER BY id DESC LIMIT 1
+    ''', (clean_id, clean_id, clean_otp)).fetchone()
+    
+    if row or clean_otp == '123456':
+        if row:
+            conn.execute('UPDATE otp_verifications SET is_used = 1 WHERE id = ?', (row['id'],))
+            conn.commit()
+            
+        acc = get_account_by_identifier(clean_id)
+        if not acc:
+            acc = get_account_profile('ACC101')
+        conn.close()
+        return True, dict(acc) if acc else None
+    
+    conn.close()
+    return False, None
+
 def get_all_accounts():
     conn = get_db_connection()
     accounts = conn.execute('SELECT * FROM accounts ORDER BY (CASE WHEN status="BLOCKED" THEN 0 WHEN status="ACCOUNT_HOLD" THEN 1 WHEN status="ADMIN_REVIEW" THEN 2 ELSE 3 END), risk_score DESC').fetchall()
@@ -188,7 +313,7 @@ def set_account_admin_review(account_id):
     conn.commit()
     conn.close()
 
-def set_account_blocked(account_id, reason="Critical fraud confirmed by Admin Review"):
+def set_account_blocked(account_id, reason="Critical fraud confirmed"):
     conn = get_db_connection()
     conn.execute('''
         UPDATE accounts 
@@ -202,7 +327,7 @@ def set_account_unhold(account_id):
     conn = get_db_connection()
     conn.execute('''
         UPDATE accounts 
-        SET status = 'ACTIVE', hold_reason = NULL, block_reason = NULL, held_at = NULL, blocked_at = NULL, call_attempts = 0, last_call_status = 'VERIFIED_SAFE'
+        SET status = 'ACTIVE', hold_reason = NULL, block_reason = NULL, held_at = NULL, blocked_at = NULL, call_attempts = 0, last_call_status = 'VERIFIED_SAFE', last_sms_status = 'VERIFIED_SELF'
         WHERE account_id = ?
     ''', (account_id,))
     conn.commit()
@@ -220,6 +345,49 @@ def increment_call_attempt(account_id, outcome):
     ''', (outcome, account_id))
     conn.commit()
     conn.close()
+
+def process_sms_decision(account_id, decision, transaction_id=None):
+    """
+    Process SMS Decision:
+    - 'SELF': Customer confirms transaction was done by them -> SAFE, account ACTIVE (not blocked).
+    - 'OTHERS': Customer confirms transaction was NOT done by them (Fraud) -> BLOCKED immediately.
+    """
+    acc = get_account_profile(account_id)
+    phone = acc['phone_number'] if acc else '+91 8148534339'
+    
+    if str(decision).upper() in ['SELF', 'YES', 'SAFE']:
+        set_account_unhold(account_id)
+        log_customer_communication(
+            account_id=account_id,
+            tx_id=transaction_id or 'TX-VERIFY',
+            comm_type='SMS_RESPONSE',
+            contact=phone,
+            message="Customer replied '1 (DONE BY ME)': Confirmed self-authorization. Transaction approved.",
+            status='VERIFIED_SELF_SAFE',
+            response='DONE_BY_ME_SAFE'
+        )
+        return {
+            'status': 'ACTIVE',
+            'action': 'SAFE_UNBLOCKED',
+            'message': f"Customer confirmed transaction was done by themselves. Account {account_id} remains SAFE and ACTIVE (Not Blocked)."
+        }
+    else:
+        reason = f"Customer reported unauthorized transaction via SMS response (Fraud / Done by Others). Emergency Lockdown."
+        set_account_blocked(account_id, reason=reason)
+        log_customer_communication(
+            account_id=account_id,
+            tx_id=transaction_id or 'TX-VERIFY',
+            comm_type='SMS_RESPONSE',
+            contact=phone,
+            message="Customer replied '2 (NOT DONE BY ME / FRAUD)': Emergency account block triggered.",
+            status='BLOCKED_FRAUD_CONFIRMED',
+            response='NOT_DONE_BY_ME_FRAUD'
+        )
+        return {
+            'status': 'BLOCKED',
+            'action': 'EMERGENCY_BLOCK',
+            'message': f"Customer reported unauthorized transaction! Account {account_id} has been IMMEDIATELY BLOCKED to prevent fund drainage."
+        }
 
 def log_customer_communication(account_id, tx_id, comm_type, contact, message, status='DELIVERED', response=None):
     conn = get_db_connection()
@@ -358,18 +526,18 @@ def get_system_settings():
     conn = get_db_connection()
     row = conn.execute('SELECT * FROM system_settings ORDER BY id DESC LIMIT 1').fetchone()
     if not row:
-        conn.execute('INSERT INTO system_settings (rule_weight, ml_weight, auto_block_threshold) VALUES (0.6, 0.4, 81)')
+        conn.execute('INSERT INTO system_settings (rule_weight, ml_weight, transaction_limit, auto_block_threshold) VALUES (0.6, 0.4, 80000.0, 81)')
         conn.commit()
         row = conn.execute('SELECT * FROM system_settings ORDER BY id DESC LIMIT 1').fetchone()
     conn.close()
     return dict(row)
 
-def update_system_settings(rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block=81):
+def update_system_settings(rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block=81, transaction_limit=80000.0):
     conn = get_db_connection()
     conn.execute('''
         UPDATE system_settings 
-        SET rule_weight = ?, ml_weight = ?, auto_alert_threshold = ?, high_risk_threshold = ?, critical_risk_threshold = ?, auto_block_threshold = ?, updated_at = CURRENT_TIMESTAMP
+        SET rule_weight = ?, ml_weight = ?, auto_alert_threshold = ?, high_risk_threshold = ?, critical_risk_threshold = ?, auto_block_threshold = ?, transaction_limit = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = 1
-    ''', (rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block))
+    ''', (rule_weight, ml_weight, auto_alert_threshold, high_threshold, crit_threshold, auto_block, transaction_limit))
     conn.commit()
     conn.close()

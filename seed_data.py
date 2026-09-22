@@ -28,8 +28,8 @@ def seed_database():
 
     # 2. Initialize System Settings
     cursor.execute('''
-        INSERT INTO system_settings (rule_weight, ml_weight, auto_alert_threshold, high_risk_threshold, critical_risk_threshold, isolation_contamination)
-        VALUES (0.60, 0.40, 60, 61, 81, 0.08)
+        INSERT INTO system_settings (rule_weight, ml_weight, transaction_limit, auto_alert_threshold, high_risk_threshold, critical_risk_threshold, isolation_contamination)
+        VALUES (0.60, 0.40, 80000.0, 60, 61, 81, 0.08)
     ''')
     conn.commit()
 
@@ -39,6 +39,7 @@ def seed_database():
         {
             'account_id': 'ACC101',
             'holder_name': 'Aarav Sharma',
+            'phone_number': '+91 8148534339',
             'avg_amount': 3200.0,
             'min_amount': 500.0,
             'max_amount': 8500.0,
@@ -52,6 +53,7 @@ def seed_database():
         {
             'account_id': 'ACC102',
             'holder_name': 'Vikram Rathore',
+            'phone_number': '+91 98401 23456',
             'avg_amount': 3500.0,
             'min_amount': 400.0,
             'max_amount': 9000.0,
@@ -59,12 +61,13 @@ def seed_database():
             'normal_hours': '08:00 - 22:00',
             'known_devices': 2,
             'avg_daily_tx': 3,
-            'risk_score': 94, # High risk due to Dubai transaction
+            'risk_score': 94,
             'status': 'FLAGGED'
         },
         {
             'account_id': 'ACC105',
             'holder_name': 'Meera Sundaram',
+            'phone_number': '+91 94440 98765',
             'avg_amount': 4500.0,
             'min_amount': 800.0,
             'max_amount': 12000.0,
@@ -78,6 +81,7 @@ def seed_database():
         {
             'account_id': 'ACC108',
             'holder_name': 'Kavita Menon',
+            'phone_number': '+91 97910 54321',
             'avg_amount': 2800.0,
             'min_amount': 300.0,
             'max_amount': 7500.0,
@@ -91,6 +95,7 @@ def seed_database():
         {
             'account_id': 'ACC109',
             'holder_name': 'Sanjay Varma',
+            'phone_number': '+91 98840 65432',
             'avg_amount': 5500.0,
             'min_amount': 1000.0,
             'max_amount': 18000.0,
@@ -104,6 +109,7 @@ def seed_database():
         {
             'account_id': 'ACC112',
             'holder_name': 'Pooja Iyer',
+            'phone_number': '+91 81485 34339',
             'avg_amount': 1800.0,
             'min_amount': 200.0,
             'max_amount': 5000.0,
@@ -117,6 +123,7 @@ def seed_database():
         {
             'account_id': 'ACC115',
             'holder_name': 'Anand Swaminathan',
+            'phone_number': '+91 94433 11223',
             'avg_amount': 6200.0,
             'min_amount': 1500.0,
             'max_amount': 20000.0,
@@ -130,6 +137,7 @@ def seed_database():
         {
             'account_id': 'ACC121',
             'holder_name': 'Deepak Balaji',
+            'phone_number': '+91 98402 33445',
             'avg_amount': 2200.0,
             'min_amount': 300.0,
             'max_amount': 6000.0,
@@ -143,6 +151,7 @@ def seed_database():
         {
             'account_id': 'ACC124',
             'holder_name': 'Sneha Nair',
+            'phone_number': '+91 97890 55667',
             'avg_amount': 3800.0,
             'min_amount': 500.0,
             'max_amount': 10000.0,
@@ -156,6 +165,7 @@ def seed_database():
         {
             'account_id': 'ACC130',
             'holder_name': 'Gautam Patel',
+            'phone_number': '+91 99001 77889',
             'avg_amount': 8500.0,
             'min_amount': 2000.0,
             'max_amount': 25000.0,
@@ -170,10 +180,10 @@ def seed_database():
 
     for acc in sample_accounts:
         cursor.execute('''
-            INSERT INTO accounts (account_id, holder_name, avg_amount, min_amount, max_amount, normal_locations, normal_hours, known_devices, avg_daily_tx, risk_score, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO accounts (account_id, holder_name, phone_number, avg_amount, min_amount, max_amount, normal_locations, normal_hours, known_devices, avg_daily_tx, risk_score, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            acc['account_id'], acc['holder_name'], acc['avg_amount'], acc['min_amount'], acc['max_amount'],
+            acc['account_id'], acc['holder_name'], acc['phone_number'], acc['avg_amount'], acc['min_amount'], acc['max_amount'],
             acc['normal_locations'], acc['normal_hours'], acc['known_devices'], acc['avg_daily_tx'], acc['risk_score'], acc['status']
         ))
     conn.commit()
